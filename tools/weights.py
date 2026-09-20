@@ -82,12 +82,20 @@ def scenarios(verdicts):
 
 
 def swaps(verdicts):
-    """F와 기존 최대 축(A 또는 B)의 가중치를 맞바꾼다."""
+    """F와 기존 최대 축(A 또는 B)의 가중치를 맞바꾼다.
+
+    주의: 맞바꾸는 두 축이 모두 '판정 불가'이면 이 조작은 항등이다. 대등 축의
+    가중치는 양쪽에 반씩 가므로, 대등 축끼리 가중치를 주고받아도 총량이 변하지
+    않는다. 계산 전에 결과가 확정되어 있으므로 강건성의 증거가 되지 못한다.
+    vacuous 플래그가 그 경우를 표시한다.
+    """
     out = []
     for i in (0, 1):
         w = base()
         w[i], w[5] = w[5], w[i]
-        out.append(row(f"F ↔ {AXES[i][0].split('.')[0]} 맞바꿈", w, verdicts))
+        nm = f"F ↔ {AXES[i][0].split('.')[0]} 맞바꿈"
+        vacuous = verdicts[i] == "=" and verdicts[5] == "="
+        out.append(row(nm, w, verdicts) + (vacuous,))
     return out
 
 
@@ -126,8 +134,9 @@ def report(title, verdicts):
     for nm, a, b, wn in scenarios(verdicts):
         print(f"| {nm} | {a:.2f} | {b:.2f} | {wn} |")
     print()
-    for nm, a, b, wn in swaps(verdicts):
-        print(f"{nm}: 건축 {a:.2f} / 여행의 미래 {b:.2f} → {wn}")
+    for nm, a, b, wn, vac in swaps(verdicts):
+        tag = "  ← 항등 조작. 두 축이 모두 대등이므로 계산 전에 결과가 정해져 있다." if vac else ""
+        print(f"{nm}: 건축 {a:.2f} / 여행의 미래 {b:.2f} → {wn}{tag}")
     print("\n판정 하나를 흔드는 시험 (기본 가중치):")
     for nm, a, b, wn in flip_each(verdicts):
         print(f"  {nm}: 건축 {a:.2f} / 여행의 미래 {b:.2f} → {wn}")
