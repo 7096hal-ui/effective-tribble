@@ -9,6 +9,7 @@
 - [`RECORD.md`](RECORD.md) — 통합 기록 전문
 - [`criticism/`](criticism/) — 같은 내용을 거친 단계 순서대로 나눈 파일 (기준 → 분리 정독 → 축별 비교 → 강건성 → 적대적 검토 → 결함 분류 → 자기 감사 → 최종 판정)
 - [`criticism/10-audit.md`](criticism/10-audit.md) — **원문 확보 후의 사후 감사.** 인용 대조에서 나온 정정 11건, 여섯 축의 재심, 급소의 이동. 00~09단계를 읽을 때 함께 읽어야 한다.
+- [`criticism/11-meta.md`](criticism/11-meta.md) — 이 비평문 자체에 대한 평가. 방법론과 실제 읽기 사이의 격차를 다룬다.
 - [`tools/weights.py`](tools/weights.py) — 강건성 시험의 수치를 재계산하는 스크립트
 
 ## 시 원문이 없는 이유
