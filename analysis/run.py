@@ -3,7 +3,7 @@ import sys, json
 sys.path.insert(0,'/tmp/claude-0/-home-user-effective-tribble/7742eeb0-1748-5d25-b889-a3f3ed6c53be/scratchpad/krx')
 import numpy as np
 from engine import simulate, metrics, composite, WEIGHTS
-from model import UNIVERSE, S
+from model import UNIVERSE, S_LIQ as S
 
 # 2026-09-18 국고채 수익률 (기간대응 무위험수익률)
 RF = {"1Y":0.03976, "3Y":0.04034, "5Y":0.04221}

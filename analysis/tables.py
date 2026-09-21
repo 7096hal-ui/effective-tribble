@@ -3,7 +3,7 @@ import sys, copy, json
 sys.path.insert(0,'/tmp/claude-0/-home-user-effective-tribble/7742eeb0-1748-5d25-b889-a3f3ed6c53be/scratchpad/krx')
 import numpy as np
 from engine import simulate, metrics, composite
-from model import UNIVERSE, S
+from model import UNIVERSE, S_LIQ as S
 
 RF={"1Y":0.03976,"3Y":0.04034,"5Y":0.04221}; YRS={"1Y":1.0,"3Y":3.0,"5Y":5.0}
 BENCH={"KOSPI":{"1Y":0.040,"3Y":0.010,"5Y":0.030},"KOSDAQ":{"1Y":0.070,"3Y":0.060,"5Y":0.060}}
