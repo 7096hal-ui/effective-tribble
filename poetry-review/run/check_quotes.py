@@ -3,7 +3,7 @@
 사용: python3 run/check_quotes.py 파일1.md [파일2.md ...]
 
 - 따옴표(" " “ ” ‘ ’ ' ')와 낫표(「 」) 안의 문자열을 인용 후보로 뽑는다.
-- 원문의 행 경계는 보고서에서 ' / ' 또는 '/' 로 표시될 수 있으므로 그 경우도 허용한다.
+- 원문의 행 경계는 ' / ' 또는 '/', 연 경계는 ' // '로 표시될 수 있으므로 그 경우도 허용한다.
 - 생략 부호(…, ...)로 이어 붙인 인용은 조각별로 확인한다.
 - 판정: OK(원문에 그대로 있음) / OK-slash(행 경계를 / 로 표시) / PART(생략 조각은 모두 있음)
         / MISS(원문에 없음) / TITLE(제목·인용 출처 표기)
@@ -37,7 +37,7 @@ def line_span(src, q):
     i = src.find(q)
     if i < 0:
         return None
-    return src[i:i + len(q)].count("\n") + 1
+    return sum(1 for l in src[i:i + len(q)].split("\n") if l.strip())  # 빈 줄(연 경계)은 행으로 세지 않는다
 
 
 def check(q):
@@ -46,9 +46,9 @@ def check(q):
     for key, src in SRC.items():
         if q in src:
             return "OK", key, line_span(src, q)
-        for sep in (" / ", "/", " // "):
+        for sep, nl in ((" // ", "\n\n"), (" / ", "\n"), ("/", "\n")):
             if sep in q:
-                q2 = q.replace(sep, "\n")
+                q2 = q.replace(sep, nl)
                 if q2 in src:
                     return "OK-slash", key, line_span(src, q2)
     pieces = [p.strip(" ,") for p in re.split(r"…+|\.\.\.(?!\.)|\(…\)|\[…\]", q) if p.strip(" ,")]
