@@ -111,7 +111,7 @@ def prepost(res):
 
 def schedule_p1(res):
     name = {"sleep_first": "수면 우선(필요량까지 수면, 남으면 여가)", "sleep_fixed": "수면 고정(실수면 7.0h, 남는 시간은 여가)"}
-    rows = ["| 재배분 경로 | 공부일 명목 h | 실수면 h | 공부일 자유시간 h | 연간 명목 공부 h | 연간 RHE: 기준 (가정 범위) | 공부일 하루 평균 RHE |",
+    rows = ["| 재배분 경로 | 공부일 명목 공부시간 h | 실수면 h | 공부일 자유 여가 h | 연간 명목 공부시간 h | 연간 RHE: 기준 (가정 범위) | 공부일 하루 평균 RHE |",
             "|---|---|---|---|---|---|---|"]
     for c in res["schedule_prompt1"]:
         per_day = c["rhe"] / 339
@@ -130,7 +130,7 @@ def increments(res):
 
 
 def prompt2_compare(res):
-    rows = ["| 일정 | 실수면 h | 공부일 자유 여가 h | 조건 | 공부일 순공부(관여) h | 연간 명목 h | 연간 RHE: 기준 (가정 범위) |", "|---|---|---|---|---|---|---|"]
+    rows = ["| 일정 | 실수면 h | 공부일 자유 여가 h | 조건 | 공부일 순공부시간 h | 연간 명목 공부시간 h | 연간 RHE: 기준 (가정 범위) |", "|---|---|---|---|---|---|---|"]
     for c in res["prompt2_compare"]:
         rows.append(f"| {c['plan']} | {c['sleep']:.1f} | {c['leisure']:.1f} | {c['condition']} | {c['engaged_h']:.1f} | {c['nominal']:.0f} | "
                     f"{c['rhe']:.0f} ({c['rhe_p10']:.0f}~{c['rhe_p90']:.0f}) |")
@@ -172,7 +172,7 @@ def hyp14(res):
 
 def representative(res):
     R = res["representative"]
-    rows = ["| 안 | 공부일 명목 | 완전 휴일(14일당) | 공부일 여가 | 순공 | 주간 명목 | 연간 명목 | 연간 RHE: 기준 (가정 범위) | A11 대비: 중앙값 (가정 범위) |",
+    rows = ["| 안 | 공부일 명목 공부시간 | 완전 휴일(14일당) | 공부일 여가 | 순공부시간 | 주간 명목 공부시간 | 연간 명목 공부시간 | 연간 RHE: 기준 (가정 범위) | A11 대비: 중앙값 (가정 범위) |",
             "|---|---|---|---|---|---|---|---|---|"]
     for k, v in R.items():
         if k in ("hyp14_8h", "A11_hourly", "B90_hourly", "rest0_vs_rest1_11h"):
