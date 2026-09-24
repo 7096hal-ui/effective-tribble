@@ -117,7 +117,7 @@ def fig_opt(res):
         ax.plot(H, np.array(sw["rel_p50"]) * 100, color=cols[k], linewidth=2, marker="o", markersize=4, label=names[k] + " (중앙값)")
         ax.fill_between(H, np.array(sw["rel_p10"]) * 100, np.array(sw["rel_p90"]) * 100, color=cols[k], alpha=0.10, linewidth=0)
     ax.set_xlabel("공부일 명목 공부시간(h) — 실수면 8h·운동·명상 조건, 기준 생활시간", color=INK2, fontsize=9)
-    ax.set_ylabel("연간 총학습량(각 가정 조합의 최댓값=100)", color=INK2, fontsize=9)
+    ax.set_ylabel("연간 총학습량(같은 가정 조합에서 휴일 14일에 1일·최대 시간 = 100)", color=INK2, fontsize=9)
     ax.set_title("두 번째 질문 틀: 일일 공부시간별 연간 총량(음영: 가정 범위)", color=INK, fontsize=11)
     ax.legend(frameon=False, fontsize=8, loc="lower right")
     fig.tight_layout()

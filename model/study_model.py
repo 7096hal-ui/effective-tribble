@@ -53,7 +53,7 @@ CYCLE = 14
 # ---------------------------------------------------------------------------
 PARAMS = {
     # 관여(engagement)
-    "e0":        (0.80, 0.70, 0.90, "A", "명목 1시간 중 과제 관여 비율(짧은 휴식·전환·이탈 포함). 강의 중 마음 방황 19~41%(Szpunar 2013), 실제 수업에서는 낮고 일정(Wammes 2016)"),
+    "e0":        (0.80, 0.70, 0.90, "A", "명목 1시간 중 과제 관여 비율(짧은 휴식·전환·이탈 포함). 온라인 강의 중 마음 방황이 흔하고 중간 퀴즈로 줄어든다는 방향만 차용(Szpunar 2013)"),
     "warm0":     (0.25, 0.00, 0.45, "A", "하루 첫 20분 준비·몰입 지연에 따른 관여 감소 비율"),
     "eps":       (0.50, 0.25, 1.00, "A", "피로 지수가 관여 비율(마음 방황·저노력 전략 이동)에 전달되는 정도. 하루 6시간 이상 고난도 인지작업 뒤 저노력 선택 증가(Blain 2016; Wiehler 2022)에서 방향만 차용"),
     # 일주기·각성시간
@@ -193,6 +193,7 @@ def simulate(plan: Plan, P: dict, days: int = DAYS, record_hours: int = 14, stor
     stepsHalf = study_steps(plan, plan.H / 2)
     qref = rested_first_hour(plan, P)
     daily = []
+    engaged = []
     for d in range(days):
         typ = types[d % CYCLE]
         if typ == "rest":
@@ -223,6 +224,7 @@ def simulate(plan: Plan, P: dict, days: int = DAYS, record_hours: int = 14, stor
             if store:
                 rec[d] = (Qh, A, D_sleep, D_load, K)
             daily.append(A.sum(axis=1))
+            engaged.append(Wd)
         else:
             daily.append(np.zeros(n))
             Wd = np.zeros(n)
@@ -235,7 +237,8 @@ def simulate(plan: Plan, P: dict, days: int = DAYS, record_hours: int = 14, stor
             L = L * (1 - P["r_rest"])
         elif typ == "partial":
             L = L * (1 - 0.5 * P["r_rest"])
-    return {"total_rhe": total_rhe, "rec": rec, "qref": qref, "daily": np.array(daily), "types": types}
+    return {"total_rhe": total_rhe, "rec": rec, "qref": qref, "daily": np.array(daily), "types": types,
+            "engaged_mean": np.mean(engaged, axis=0) if engaged else np.zeros(n)}
 
 
 def run_day(steps, P, B, gmax, adapt_e):
@@ -479,6 +482,9 @@ def main(n_sweep: int = 300):
     opt = optimize_prompt2(Pb, Ps)
     results.update(opt)
 
+    results.update(extra_analysis(Pb, Ps))
+    results["representative"] = representative_plans(Pb, Ps)
+
     # 4) 민감도(일대일): 핵심 결론 3개
     results["sensitivity"] = one_at_a_time()
 
@@ -488,9 +494,13 @@ def main(n_sweep: int = 300):
 
 
 def pct_hours(ts):
+    """임계 도달 시간의 10~90 백분위. 14시간 안에 도달하지 않으면 15로 두고 '없음'으로 표기."""
     vals = [t if t is not None else 15 for t in ts]
     lo, hi = np.percentile(vals, 10), np.percentile(vals, 90)
-    f = lambda v: "14h 이내 없음" if v >= 15 else f"{int(round(v))}"
+    lo, hi = int(round(lo)), int(round(hi))
+    f = lambda v: "없음" if v >= 15 else f"{v}"
+    if lo >= 15:
+        return "14h 안에 없음"
     return f"{f(lo)}~{f(hi)}"
 
 
@@ -542,8 +552,9 @@ def optimize_prompt2(Pb, Ps):
             b = max(cand, key=lambda g: g["rhe"])
             optB[f"{int(floor*60)}"] = {"best": b, "band": [g for g in cand if g["rhe"] >= 0.98 * b["rhe"]]}
     out["optB"] = optB
-    # 가정 스윕에서 최적 H의 분포(휴일 1/14, 2/14 각각)
+    # 가정 스윕에서 최적 H의 분포(휴일 1/14, 2/14). 두 곡선 모두 같은 가정 조합의 '휴일 1/14 최댓값'으로 정규화
     sweep = {}
+    mats = {}
     for rest in (1, 2):
         vals = []
         for H in Hs:
@@ -551,10 +562,12 @@ def optimize_prompt2(Pb, Ps):
             if pl is None:
                 continue
             vals.append((H, simulate(pl, Ps, store=False)["total_rhe"]))
-        Hgrid = np.array([v[0] for v in vals])
-        M = np.stack([v[1] for v in vals])  # nH x n
+        mats[rest] = (np.array([v[0] for v in vals]), np.stack([v[1] for v in vals]))
+    ref = mats[1][1].max(axis=0, keepdims=True)
+    for rest in (1, 2):
+        Hgrid, M = mats[rest]
         argbest = Hgrid[np.argmax(M, axis=0)]
-        rel = M / M.max(axis=0, keepdims=True)
+        rel = M / ref
         sweep[str(rest)] = {"H": Hgrid.tolist(),
                             "opt_H_p10": float(np.percentile(argbest, 10)), "opt_H_p50": float(np.percentile(argbest, 50)),
                             "opt_H_p90": float(np.percentile(argbest, 90)),
@@ -576,6 +589,114 @@ def optimize_prompt2(Pb, Ps):
         variants.append({"variant": tag, "tib": round(pl.tib, 2), "sleep": round(pl.actual_sleep(), 2),
                          "rhe": float(sb["total_rhe"][0]), "check24": round(pl.check(), 2)})
     out["variants_14h_prompt2"] = variants
+    return out
+
+
+
+def extra_analysis(Pb, Ps):
+    """(1) 두 번째 질문 틀의 8/10/11/12/14h 비교(불가능 일정은 어떤 조건을 깨는지 명시)
+    (2) 휴일 빈도와 여가의 손익분기(모형과 무관한 산술) 및 가정 스윕에서 휴일을 늘리는 쪽이 이기는 비율
+    (3) 대표안의 순공부시간(관여 시간) 추정"""
+    out = {}
+    se, cfg = life2_cfg("base")
+    rows = []
+    def add(tag, pl, cond):
+        sb = simulate(pl, Pb, store=False)
+        ss = simulate(pl, Ps, store=False)
+        rows.append({"plan": tag, "H": pl.H, "sleep": round(pl.actual_sleep(), 2), "leisure": round(pl.leisure, 2),
+                     "check24": round(pl.check(), 2), "condition": cond, "rhe": float(sb["total_rhe"][0]),
+                     "rhe_p10": float(np.percentile(ss["total_rhe"], 10)), "rhe_p90": float(np.percentile(ss["total_rhe"], 90)),
+                     "engaged_h": float(sb["engaged_mean"][0]), "nominal": annual_nominal(pl)})
+    for H in (8, 10, 11):
+        add(f"{H}h", prompt2_plan(H, "base", 1, 0), "조건 모두 충족(기준 생활 4.3h)")
+    add("12h-빠듯한 생활", prompt2_plan(12, "tight", 1, 0), "조건 충족하나 생활시간을 빠듯한 가정(2.9h)으로 줄여야 가능")
+    add("12h-수면삭감", Plan("12h-수면삭감", 12, tib=24 - 12 - LIFE2_TOTAL["base"], sleep_eff=se, wake=6.5, exercise=True, **cfg),
+        "실수면 8h 조건 위반(수면을 줄여 맞춤)")
+    add("14h-수면삭감", Plan("14h-수면삭감", 14, tib=24 - 14 - LIFE2_TOTAL["base"], sleep_eff=se, wake=6.5, exercise=True, **cfg),
+        "실수면 8h 조건 위반(수면을 줄여 맞춤)")
+    add("14h-생활압축", Plan("14h-생활압축", 14, tib=8.6, sleep_eff=se, wake=6.5, morning=0.2, lunch=0.4, dinner=0.4, evening=0.4),
+        "운동·명상 조건 위반, 식사·위생 1.4h로 압축(비현실적)")
+    out["prompt2_compare"] = rows
+
+    # 손익분기: 휴일 14일에 1일 -> 2일로 늘리면 공부일 13 -> 12일
+    out["breakeven"] = {
+        "rest_1_to_2_per14_required_gain_pct": 100 * (13 / 12 - 1),
+        "rest_1_to_3_per14_required_gain_pct": 100 * (13 / 11 - 1),
+        "note": "휴일을 하루 늘려도 연간 총량이 같으려면 남은 공부일의 하루 총학습량이 평균 이만큼 높아져야 한다(시간당 효율 곡선과 무관한 산술).",
+    }
+    # 여가 손익분기: 기준 모형에서 H=11 -> 10 (여가 +1h)일 때 잃는 11번째 시간의 비중
+    s11 = simulate(prompt2_plan(11, "base", 1, 0), Pb)
+    last = []
+    for d in s11["rec"]:
+        A = s11["rec"][d][1][0]
+        last.append((A[10], A.sum()))
+    share = float(np.sum([a for a, _ in last]) / np.sum([t for _, t in last]))
+    out["breakeven"]["leisure_hour_required_gain_pct"] = 100 * share / (1 - share)
+    out["breakeven"]["leisure_note"] = "11h -> 10h로 줄여 여가 1시간을 만들 때, 남는 10시간의 성과가 평균 이만큼 올라야 본전(기준 모형의 11번째 시간 비중으로 계산)."
+
+    # 가정 스윕에서 휴일을 늘리는 쪽이 이기는 비율
+    win = {}
+    for H in (10.0, 11.0):
+        base1 = simulate(prompt2_plan(H, "base", 1, 0), Ps, store=False)["total_rhe"]
+        for rest in (2, 3):
+            alt = simulate(prompt2_plan(H, "base", rest, 0), Ps, store=False)["total_rhe"]
+            win[f"H{H:g}_rest{rest}_vs_rest1"] = {"share_alt_better": float(np.mean(alt > base1)),
+                                                 "ratio_p10": float(np.percentile(alt / base1, 10)),
+                                                 "ratio_p50": float(np.percentile(alt / base1, 50)),
+                                                 "ratio_p90": float(np.percentile(alt / base1, 90))}
+        part = simulate(prompt2_plan(H, "base", 1, 1), Ps, store=False)["total_rhe"]
+        win[f"H{H:g}_partial1_vs_none"] = {"share_alt_better": float(np.mean(part > base1)),
+                                          "ratio_p50": float(np.percentile(part / base1, 50))}
+    # 여가 하한에 따른 비용(가정 스윕): 11h(여가 0.1) 대비 10h(1.1), 9.5h(1.6), 9h(2.1)
+    b11 = simulate(prompt2_plan(11, "base", 1, 0), Ps, store=False)["total_rhe"]
+    for H, rest in ((10, 2), (9.5, 2), (9, 2), (10, 1)):
+        alt = simulate(prompt2_plan(H, "base", rest, 0), Ps, store=False)["total_rhe"]
+        win[f"H{H:g}_rest{rest}_vs_H11_rest1"] = {"share_alt_better": float(np.mean(alt > b11)),
+                                                 "ratio_p10": float(np.percentile(alt / b11, 10)),
+                                                 "ratio_p50": float(np.percentile(alt / b11, 50)),
+                                                 "ratio_p90": float(np.percentile(alt / b11, 90))}
+    out["rest_leisure_sweep"] = win
+    return out
+
+
+def representative_plans(Pb, Ps):
+    """두 번째 질문의 대표안(A, B60, B90, B120)과 14h 가상안(실수면 8h 유지, 운동·명상 생략)의 요약·시간별 표."""
+    se, cfg = life2_cfg("base")
+    plans = {
+        "A_11h_휴일14일1": prompt2_plan(11, "base", 1, 0),
+        "A_10.5h_휴일14일1": prompt2_plan(10.5, "base", 1, 0),
+        "B60_10h_주1휴일": prompt2_plan(10, "base", 2, 0),
+        "B90_9.5h_주1휴일": prompt2_plan(9.5, "base", 2, 0),
+        "B120_9h_주1휴일": prompt2_plan(9, "base", 2, 0),
+    }
+    out = {}
+    ref = None
+    for k, pl in plans.items():
+        sb = simulate(pl, Pb, store=False)
+        ss = simulate(pl, Ps, store=False)
+        if ref is None:
+            ref = ss["total_rhe"]
+        out[k] = {"H": pl.H, "rest_per_14": pl.rest_per_14, "leisure": round(pl.leisure, 2), "sleep": round(pl.actual_sleep(), 2),
+                  "engaged_h": float(sb["engaged_mean"][0]), "annual_nominal": annual_nominal(pl),
+                  "weekly_nominal": annual_nominal(pl) / DAYS * 7,
+                  "rhe": float(sb["total_rhe"][0]), "rhe_p10": float(np.percentile(ss["total_rhe"], 10)),
+                  "rhe_p90": float(np.percentile(ss["total_rhe"], 90)),
+                  "rel_to_A11_p10": float(np.percentile(ss["total_rhe"] / ref, 10)),
+                  "rel_to_A11_p50": float(np.percentile(ss["total_rhe"] / ref, 50)),
+                  "rel_to_A11_p90": float(np.percentile(ss["total_rhe"] / ref, 90))}
+    # 14h 가상안: 실수면 8h 유지, 생활 1.4h(운동·명상 생략)
+    hyp = Plan("14h-8h수면(가상)", 14, tib=8.6, sleep_eff=se, wake=6.5, morning=0.2, lunch=0.4, dinner=0.4, evening=0.4)
+    sb, ss = simulate(hyp, Pb), simulate(hyp, Ps)
+    tabs = {}
+    for tp in ("1-2주", "6개월", "12개월"):
+        cyc = TIMEPOINTS[tp]
+        Rb, Ab = cycle_average(sb, cyc)
+        Rs, As = cycle_average(ss, cyc)
+        tabs[tp] = {"R": Rb[0].tolist(), "A": Ab[0].tolist(),
+                    "R_lo": np.percentile(Rs, 10, axis=0).tolist(), "R_hi": np.percentile(Rs, 90, axis=0).tolist(),
+                    "A_lo": np.percentile(As, 10, axis=0).tolist(), "A_hi": np.percentile(As, 90, axis=0).tolist(),
+                    "le80": first_below(Rb[0], 80), "le80_range": pct_hours([first_below(r, 80) for r in Rs])}
+    out["hyp14_8h"] = tabs
     return out
 
 
