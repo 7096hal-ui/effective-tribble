@@ -126,6 +126,37 @@ def sensitivity(res):
     return "\n".join(rows)
 
 
+def hyp14(res):
+    H = res["representative"]["hyp14_8h"]
+    rows = ["| 명목 공부 시간째 | 초기 1~2주 R | 6개월 R | 12개월 R | 초기 1~2주 A | 6개월 A | 12개월 A |",
+            "|---|---|---|---|---|---|---|"]
+    for h in range(14):
+        cells = []
+        for tp in ("1-2주", "6개월", "12개월"):
+            d = H[tp]
+            cells.append("100" if h == 0 else cell(d["R"][h], d["R_lo"][h], d["R_hi"][h]))
+        for tp in ("1-2주", "6개월", "12개월"):
+            d = H[tp]
+            cells.append(cell(d["A"][h], d["A_lo"][h], d["A_hi"][h]))
+        rows.append(f"| {h+1} | " + " | ".join(cells) + " |")
+    le = ", ".join(f"{tp}: {H[tp]['le80']}번째({H[tp]['le80_range']})" for tp in ("1-2주", "6개월", "12개월"))
+    rows.append("")
+    rows.append(f"R≤80% 첫 시간(기준, 가정 범위) — {le}")
+    return "\n".join(rows)
+
+
+def representative(res):
+    R = res["representative"]
+    rows = ["| 안 | 공부일 명목 | 완전 휴일(14일당) | 공부일 여가 | 순공 | 주간 명목 | 연간 명목 | 연간 RHE: 기준 (가정 범위) | A11 대비: 중앙값 (가정 범위) |",
+            "|---|---|---|---|---|---|---|---|---|"]
+    for k, v in R.items():
+        if k == "hyp14_8h":
+            continue
+        rows.append(f"| {k} | {v['H']:g}h | {v['rest_per_14']} | {v['leisure']:.1f}h | {v['engaged_h']:.1f}h | {v['weekly_nominal']:.1f}h | {v['annual_nominal']:.0f}h | "
+                    f"{v['rhe']:.0f} ({v['rhe_p10']:.0f}~{v['rhe_p90']:.0f}) | {v['rel_to_A11_p50']:.2f} ({v['rel_to_A11_p10']:.2f}~{v['rel_to_A11_p90']:.2f}) |")
+    return "\n".join(rows)
+
+
 def main():
     with open(os.path.join(HERE, "outputs", "results.json"), encoding="utf-8") as f:
         res = json.load(f)
@@ -139,6 +170,8 @@ def main():
         ("표 E-2. 연장의 분해", increments(res)),
         ("표 P2. 두 번째 질문 틀 일정 비교", prompt2_compare(res)),
         ("표 S. 일대일 민감도", sensitivity(res)),
+        ("표 P2-H. 실수면 8h를 지킨 14h 가상 일정", hyp14(res)),
+        ("표 P2-R. 두 번째 질문 대표안", representative(res)),
     ]
     out = "\n\n".join(f"### {t}\n\n{b}" for t, b in parts)
     with open(os.path.join(HERE, "outputs", "tables.md"), "w", encoding="utf-8") as f:
