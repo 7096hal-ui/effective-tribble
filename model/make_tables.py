@@ -26,7 +26,7 @@ def cell(v, lo, hi):
 
 def hourly_main(res, lab="S2"):
     H = res["hourly"][lab]
-    rows = ["| 명목 공부 시간째 | 초기 1~2주 R | 1개월 R | 3개월 R | 6개월 R | 12개월 R | 12개월 A |",
+    rows = ["| 몇 번째 시간 | 초기 1~2주 R | 1개월 R | 3개월 R | 6개월 R | 12개월 R | 12개월 A |",
             "|---|---|---|---|---|---|---|"]
     for h in range(14):
         cells = []
@@ -40,7 +40,7 @@ def hourly_main(res, lab="S2"):
 
 
 def hourly_scen(res):
-    rows = ["| 시간째 | S1 3개월 R | S2 3개월 R | S3 3개월 R | S1 12개월 A | S2 12개월 A | S3 12개월 A |",
+    rows = ["| 몇 번째 시간 | S1 3개월 R | S2 3개월 R | S3 3개월 R | S1 12개월 A | S2 12개월 A | S3 12개월 A |",
             "|---|---|---|---|---|---|---|"]
     for h in range(14):
         cells = []
@@ -55,7 +55,7 @@ def hourly_scen(res):
 
 
 def thresholds(res):
-    rows = ["| 시나리오 | 시점 | R≤80% 첫 시간째: 기준 (가정 범위) | 14h 안에 80% 미도달 비율 | R≤50% 첫 시간째: 기준 (가정 범위) | 14h 안에 50% 미도달 비율 |",
+    rows = ["| 시나리오 | 시점 | R이 처음 80% 이하가 되는 시간: 기준 (가정 범위) | 14h 안에 80% 미도달 비율 | R이 처음 50% 이하가 되는 시간: 기준 (가정 범위) | 14h 안에 50% 미도달 비율 |",
             "|---|---|---|---|---|---|"]
     for t in res["thresholds"]:
         f = lambda v: "14h 안에 없음" if v is None else f"{v}번째"
@@ -65,13 +65,38 @@ def thresholds(res):
 
 
 def yearly(res):
-    rows = ["| 시나리오 | 시점 | 첫 1시간 A | 공부일 하루 총량(RHE) | 9~14번째 시간의 비중 |", "|---|---|---|---|---|"]
-    pick = {"초기(1~2주)": 1, "1개월": 3, "3개월": 7, "6개월": 13, "12개월": 26}
+    rows = ["| 시나리오 | 시점 | 첫 1시간 A | 공부일 하루 총량(RHE) | 9~14번째 시간의 기여(RHE) | 13~14번째 시간의 기여(RHE) | 9~14번째 시간의 비중 |",
+            "|---|---|---|---|---|---|---|"]
+    pick = {"초기(1~2주)": ("1-2주", 1), "1개월": ("1개월", 3), "3개월": ("3개월", 7), "6개월": ("6개월", 13), "12개월": ("12개월", 26)}
     for lab in ("S1", "S2", "S3"):
         yr = res["yearly"][lab]
-        for name, cyc in pick.items():
+        for name, (tp, cyc) in pick.items():
             r = yr[cyc - 1]
-            rows.append(f"| {lab} | {name} | {r5(r[1])} ({rng(r[4], r[5])}) | {r[2]:.1f} ({r[6]:.1f}~{r[7]:.1f}) | {100*r[3]:.0f}% |")
+            h = res["hourly"][lab][tp]
+            rows.append(f"| {lab} | {name} | {r5(r[1])} ({rng(r[4], r[5])}) | {r[2]:.1f} ({r[6]:.1f}~{r[7]:.1f}) | "
+                        f"{h['late9_14']:.1f} ({h['late9_14_p10']:.1f}~{h['late9_14_p90']:.1f}) | {h['late13_14']:.1f} ({h['late13_14_p10']:.1f}~{h['late13_14_p90']:.1f}) | "
+                        f"{100*r[3]:.0f}% ({100*h['share9_14_p10']:.0f}~{100*h['share9_14_p90']:.0f}%) |")
+    return "\n".join(rows)
+
+
+def plan_hourly(res, key):
+    T = res["representative"][key]
+    H = T["12개월"]["H"]
+    nh = len(T["12개월"]["R"])
+    frac = H - int(H) if H != int(H) else 1.0
+    rows = ["| 몇 번째 시간 | 초기 1~2주 R | 6개월 R | 12개월 R | 초기 1~2주 A | 6개월 A | 12개월 A |",
+            "|---|---|---|---|---|---|---|"]
+    for h in range(nh):
+        scale = 1.0 / frac if (h == nh - 1 and frac < 1.0) else 1.0
+        label = f"{h+1}" if scale == 1.0 else f"{h+1} (마지막 {int(frac*60)}분, 1시간당 환산)"
+        cells = []
+        for tp in ("1-2주", "6개월", "12개월"):
+            d = T[tp]
+            cells.append("100" if h == 0 else cell(d["R"][h] * scale, d["R_lo"][h] * scale, d["R_hi"][h] * scale))
+        for tp in ("1-2주", "6개월", "12개월"):
+            d = T[tp]
+            cells.append(cell(d["A"][h] * scale, d["A_lo"][h] * scale, d["A_hi"][h] * scale))
+        rows.append(f"| {label} | " + " | ".join(cells) + " |")
     return "\n".join(rows)
 
 
@@ -128,7 +153,7 @@ def sensitivity(res):
 
 def hyp14(res):
     H = res["representative"]["hyp14_8h"]
-    rows = ["| 명목 공부 시간째 | 초기 1~2주 R | 6개월 R | 12개월 R | 초기 1~2주 A | 6개월 A | 12개월 A |",
+    rows = ["| 몇 번째 시간 | 초기 1~2주 R | 6개월 R | 12개월 R | 초기 1~2주 A | 6개월 A | 12개월 A |",
             "|---|---|---|---|---|---|---|"]
     for h in range(14):
         cells = []
@@ -150,7 +175,7 @@ def representative(res):
     rows = ["| 안 | 공부일 명목 | 완전 휴일(14일당) | 공부일 여가 | 순공 | 주간 명목 | 연간 명목 | 연간 RHE: 기준 (가정 범위) | A11 대비: 중앙값 (가정 범위) |",
             "|---|---|---|---|---|---|---|---|---|"]
     for k, v in R.items():
-        if k == "hyp14_8h":
+        if k in ("hyp14_8h", "A11_hourly", "B90_hourly", "rest0_vs_rest1_11h"):
             continue
         rows.append(f"| {k} | {v['H']:g}h | {v['rest_per_14']} | {v['leisure']:.1f}h | {v['engaged_h']:.1f}h | {v['weekly_nominal']:.1f}h | {v['annual_nominal']:.0f}h | "
                     f"{v['rhe']:.0f} ({v['rhe_p10']:.0f}~{v['rhe_p90']:.0f}) | {v['rel_to_A11_p50']:.2f} ({v['rel_to_A11_p10']:.2f}~{v['rel_to_A11_p90']:.2f}) |")
@@ -172,6 +197,8 @@ def main():
         ("표 S. 일대일 민감도", sensitivity(res)),
         ("표 P2-H. 실수면 8h를 지킨 14h 가상 일정", hyp14(res)),
         ("표 P2-R. 두 번째 질문 대표안", representative(res)),
+        ("표 P2-A. 시나리오 A(11h) 시간별", plan_hourly(res, "A11_hourly")),
+        ("표 P2-B. 시나리오 B(9.5h) 시간별", plan_hourly(res, "B90_hourly")),
     ]
     out = "\n\n".join(f"### {t}\n\n{b}" for t, b in parts)
     with open(os.path.join(HERE, "outputs", "tables.md"), "w", encoding="utf-8") as f:

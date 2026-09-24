@@ -405,6 +405,13 @@ def main(n_sweep: int = 300):
             Rb, Ab = cycle_average(sb, cyc)
             Rs, As = cycle_average(ss, cyc)
             hourly[lab][tp] = {
+                "late9_14": float(Ab[0][8:].sum() / 100), "late13_14": float(Ab[0][12:].sum() / 100),
+                "late9_14_p10": float(np.percentile(As[:, 8:].sum(axis=1) / 100, 10)),
+                "late9_14_p90": float(np.percentile(As[:, 8:].sum(axis=1) / 100, 90)),
+                "late13_14_p10": float(np.percentile(As[:, 12:].sum(axis=1) / 100, 10)),
+                "late13_14_p90": float(np.percentile(As[:, 12:].sum(axis=1) / 100, 90)),
+                "share9_14_p10": float(np.percentile(As[:, 8:].sum(axis=1) / As.sum(axis=1), 10)),
+                "share9_14_p90": float(np.percentile(As[:, 8:].sum(axis=1) / As.sum(axis=1), 90)),
                 "R": Rb[0].tolist(), "A": Ab[0].tolist(),
                 "R_lo": np.percentile(Rs, 10, axis=0).tolist(), "R_hi": np.percentile(Rs, 90, axis=0).tolist(),
                 "A_lo": np.percentile(As, 10, axis=0).tolist(), "A_hi": np.percentile(As, 90, axis=0).tolist(),
@@ -697,6 +704,26 @@ def representative_plans(Pb, Ps):
                     "A_lo": np.percentile(As, 10, axis=0).tolist(), "A_hi": np.percentile(As, 90, axis=0).tolist(),
                     "le80": first_below(Rb[0], 80), "le80_range": pct_hours([first_below(r, 80) for r in Rs])}
     out["hyp14_8h"] = tabs
+    # 실제 권장안의 시간별 표(평균적인 하루 기준)
+    for key, pl in (("A11_hourly", plans["A_11h_휴일14일1"]), ("B90_hourly", plans["B90_9.5h_주1휴일"])):
+        nh = int(math.ceil(pl.H))
+        sb, ss = simulate(pl, Pb), simulate(pl, Ps)
+        tb = {}
+        for tp in ("1-2주", "6개월", "12개월"):
+            cyc = TIMEPOINTS[tp]
+            Rb, Ab = cycle_average(sb, cyc, nh)
+            Rs, As = cycle_average(ss, cyc, nh)
+            tb[tp] = {"R": Rb[0].tolist(), "A": Ab[0].tolist(),
+                      "R_lo": np.percentile(Rs, 10, axis=0).tolist(), "R_hi": np.percentile(Rs, 90, axis=0).tolist(),
+                      "A_lo": np.percentile(As, 10, axis=0).tolist(), "A_hi": np.percentile(As, 90, axis=0).tolist(),
+                      "H": pl.H}
+        out[key] = tb
+    # 휴일 0일(탐색 범위 밖) 비교: 모형에 소진·꼬리 위험이 없다는 한계를 드러내기 위한 참고값
+    r0 = simulate(prompt2_plan(11, "base", 0, 0), Ps, store=False)["total_rhe"]
+    r1 = simulate(prompt2_plan(11, "base", 1, 0), Ps, store=False)["total_rhe"]
+    b0 = simulate(prompt2_plan(11, "base", 0, 0), Pb, store=False)["total_rhe"][0]
+    out["rest0_vs_rest1_11h"] = {"rhe_rest0": float(b0), "ratio_p10": float(np.percentile(r0 / r1, 10)),
+                                 "ratio_p50": float(np.percentile(r0 / r1, 50)), "ratio_p90": float(np.percentile(r0 / r1, 90))}
     return out
 
 
