@@ -1,0 +1,5864 @@
+{
+ "M2": {
+  "model_name": "M2 learning-science-first task-mix model (15-min slots; 4 task types; bounded sleep-debt / strain / adaptation states; sleep-dependent consolidation)",
+  "code_path": "model/independent/M2_learning.py",
+  "structure_summary": "M2 builds each nominal hour's value from what the hour is spent on. A study day is simulated in 15-min slots. Each slot holds shares of four task types: new learning/lectures (NEW), problem solving (PROB), retrieval/review (RET) and timed mock tests (MOCK). Each type has its own rested value, on-task fraction, mind-wandering level, sensitivity to state, cognitive demand and susceptibility to low-effort drift. Engaged time is explicit: e = on-task share x (1 - mind wandering) x warm-up x strain factor. The denominator is always the nominal hour.\n\nWithin a day, yield falls through separate channels:\n- Transient: mind wandering rises with time in the current block and resets at meal breaks; a post-lunch dip.\n- Sustained within the day: content-specific saturation of massed same-type work (softened by rotating 4-6 content streams); a small daily encoding-capacity decline (Mander 2011, weak); drift toward low-effort methods once the demand-weighted effort load passes ~6.5 h (Blain/Wiehler inference).\n- Time awake: flat until ~16 h awake, with that threshold shifted earlier by sleep debt.\nWarm-up in the first slot and after meals lets curves be non-monotone, and values above 100 are allowed.\n\nThe start of each day carries three bounded states:\n- Sleep debt: a leaky accumulator that settles at an equilibrium. Rest-day sleep-in repays part of it.\n- Multi-week strain: fed by effort load above a sustainable level and drained by leisure, exercise/meditation and rest days. It lowers engagement, and a rest day removes about 35% of it, not all.\n- Slow endurance adaptation: at most 15% smaller within-day slopes.\nThe day's learning is multiplied by a consolidation factor from the following night's sleep (Berres & Erdfelder; Newbury).\n\nR normalises by the same day's hour 1. A normalises by a rested twin's hour 1, using the fixed daily mix, so RHE can be compared across schedules and task allocations.\n\nQ2 splits each lifestyle increment into the block of added hours and a spillover onto all earlier hours and days. Counterfactual runs further split the spillover into sleep, leisure/recovery and load/strain channels. Q3 grid-searches daily hours (0.25 h steps), full and partial rest days, and leisure floors within the prompt-2 budgets. Task allocation is compared three ways: fixed mix, a 'hard early, review late' heuristic, and a hill-climbed slot order.",
+  "equations": "Units: t = day (0..364), h = nominal hour, tau = hours since waking, dt = 0.25 h. Yield units are arbitrary learning units per nominal hour.\n(1) Task-k yield rate in a slot: q_k = v_k * e_k * S_k * sat_k * enc_k * mq_k.\n(2) Engagement: e_k = e0_k * (1 - mw_k) * warm * E_F.\n    mw_k = mw0_k + slope_k*(1-alpha)*b, where b = h since the current block started (reset at meal breaks).\n    warm = 0.85 in the first slot of the day, 0.92 in the first slot after a meal, 1 otherwise.\n    E_F = 1 - f_max*(1 - exp(-F/F_scale)).\n(3) State: S_k = [M_sleep * W * Dip * irr]^(sens_k).\n    M_sleep = 1 - a_sleep*(1 - exp(-D/D_scale)), D = sleep debt (h).\n    W = 1 if tau <= tau_c, else max(0.3, 1 - w_slope*(tau - tau_c)); tau_c = tau_crit0 - kD*D (a further -0.5 h in S3).\n    Dip = 1 - p_dip*exp(-0.5*((tau - 7.5)/0.8)^2).\n    irr = 0.97 in S3, 1 otherwise.\n(4) Saturation: sat_k = 1/(1 + sat_rate*m_k/n_k), m_k = engaged h of type k earlier the same day, n_k = number of content streams.\n(5) Encoding: enc_k = 1 - encw_k*enc_eps*(1 - exp(-N/enc_scale)), N = sum of engaged h x encw.\n(6) Method quality: mq_k = 1 - delta*susc_k*(1 - rho_k), delta = drift_max*(1-alpha)/(1 + exp(-(L - L50)/s)).\n    L = sum of engaged h x demand_k; at each long break L is multiplied by exp(-beta_break*break_h).\n(7) Hour value: Q(t,h) = mean over its 4 slots of sum_k share_k*q_k, times Cons_t.\n    Cons_t = 1 - c_cons*max(0, (need - s_t)/need)^gamma_cons, s_t = actual sleep the night after day t (h).\n(8) R(t,h) = 100*Q(t,h)/Q(t,1). A(t,h) = 100*Q(t,h)/Q_ref(t), where Q_ref = hour-1 rate of the rested twin (D=0, F=0, Cons=1, irr=1, fixed mix, same alpha and clock time).\n    RHE_day = sum over slots of Q*dt/Q_ref (hours). Annual RHE = sum over days.\n(9) Sleep debt: D_{t+1} = max(0, (1-lam_debt)*D_t + need - s_t). The night before a full rest day adds min(ext_cap, 0.5*D) of sleep; the night before a partial day adds half that.\n(10) Strain: F_{t+1} = F_t*(1 - mu_t) + eta*max(0, Load_t - L_sus), Load in demand-weighted engaged h.\n    mu_t = mu0 + mu_leis_max*(1 - exp(-leisure_t/leis_scale)) + mu_exmed*exmed_h.\n    On a rest day leisure = 24 - TIB - life (~11-14 h), giving mu of about 0.35.\n(11) Adaptation: alpha(t) = adapt_max*(1 - exp(-t/adapt_tau)).\n(12) Budget: life + H + leisure + TIB = 24 h, TIB = sleep/eff.\n    Prompt-1: TIB = min(24 - H - life, need/eff); the rest goes to leisure.\n    Prompt-2: sleep = 8.0 h, TIB = 8/eff, H_max = 24 - TIB - life - leisure floor. An infeasible H is built as a conditional variant: either sleep is cut, or exercise+meditation are dropped first and then sleep is cut.",
+  "parameters": [
+   {
+    "name": "need (sleep need, actual h)",
+    "value": "8.3",
+    "sensitivity_range": "8.0-8.6",
+    "label": "literature_constrained",
+    "basis": "Digest s1: Van Dongen 2003 implied 8.16 h; Kitamura 2016 8.4 h (individual 7.3-9.3)"
+   },
+   {
+    "name": "lam_debt (daily debt leak)",
+    "value": "0.20/day",
+    "sensitivity_range": "0.10-0.35",
+    "label": "indirect_estimate",
+    "basis": "Bounded equilibrium (McCauley 2009); Belenky 2003 stabilisation at 7 h TIB; Van Dongen 2003 still worsening at 14 d (lower bound); Kitamura: 1 h debt ~4 d to repay"
+   },
+   {
+    "name": "a_sleep (max learning loss from chronic debt)",
+    "value": "0.25",
+    "sensitivity_range": "0.12-0.40",
+    "label": "indirect_estimate",
+    "basis": "Calibrated so a 5 h-TIB week (debt ~15 h) costs ~13% (~g -0.45 at CV 0.3). Anchors: Lowe 2017 LTM g=-0.19, overall -0.38; Newbury 2021 pre-learning deprivation g=0.62; Cousins 2018"
+   },
+   {
+    "name": "D_scale",
+    "value": "20 h",
+    "sensitivity_range": "12-30",
+    "label": "assumption",
+    "basis": "Debt at which 63% of a_sleep is reached"
+   },
+   {
+    "name": "ext_cap (rest-day sleep-in cap)",
+    "value": "2.0 h",
+    "sensitivity_range": "1.0-3.0",
+    "label": "assumption",
+    "basis": "Lo 2016/2017, Kitamura 2016: catch-up is partial"
+   },
+   {
+    "name": "ext_frac",
+    "value": "0.5 x debt",
+    "sensitivity_range": "0.3-0.8 (declared, not run)",
+    "label": "assumption",
+    "basis": "Sleep-in proportional to debt"
+   },
+   {
+    "name": "D0 (debt on day 1)",
+    "value": "1.0 h",
+    "sensitivity_range": "0-3 (declared, not run; affects only weeks 1-3)",
+    "label": "assumption",
+    "basis": "Mild pre-existing debt"
+   },
+   {
+    "name": "c_cons (7-day retention loss with no post-learning sleep)",
+    "value": "0.15",
+    "sensitivity_range": "0.05-0.25",
+    "label": "indirect_estimate",
+    "basis": "Berres & Erdfelder 2021 g=0.44; Newbury 2021 after-learning g=0.28 (publication bias); g converted via CV ~0.3"
+   },
+   {
+    "name": "gamma_cons",
+    "value": "1.0",
+    "sensitivity_range": "0.7-2.0",
+    "label": "assumption",
+    "basis": "Shape of consolidation loss vs sleep deficit (>1 = SWS protected under mild restriction)"
+   },
+   {
+    "name": "tau_crit0 (h awake before decline)",
+    "value": "16 h",
+    "sensitivity_range": "15-17",
+    "label": "literature_constrained",
+    "basis": "Dijk & Czeisler 1994, Wright 2002: stable alertness over ~16 h wake; Van Dongen critical wake 15.84 h"
+   },
+   {
+    "name": "kD_tcrit",
+    "value": "0.3 h per h debt",
+    "sensitivity_range": "0.1-0.5",
+    "label": "assumption",
+    "basis": "Debt brings the evening decline earlier"
+   },
+   {
+    "name": "w_slope",
+    "value": "0.06 per h beyond tau_c",
+    "sensitivity_range": "0.03-0.10",
+    "label": "assumption",
+    "basis": "Decline beyond ~16 h awake (background circadian/homeostatic evidence)"
+   },
+   {
+    "name": "p_dip (post-lunch dip)",
+    "value": "0.05",
+    "sensitivity_range": "0-0.10",
+    "label": "indirect_estimate",
+    "basis": "Monk 2005: variable post-lunch dip"
+   },
+   {
+    "name": "tau_dip",
+    "value": "7.5 h after waking",
+    "sensitivity_range": "7-8 (declared, not run)",
+    "label": "assumption",
+    "basis": "~14:00 for a 06:30 wake"
+   },
+   {
+    "name": "S3 irregularity (penalty / nightly SD / tau_c shift)",
+    "value": "0.03 / 0.6 h / 0.5 h",
+    "sensitivity_range": "penalty 0-0.06 run; others declared",
+    "label": "assumption",
+    "basis": "Digest S3 'irregular timing / lower efficiency'"
+   },
+   {
+    "name": "mw0 by type (NEW/PROB/RET/MOCK) x mw0_scale",
+    "value": "0.20/0.12/0.08/0.05 x1.0",
+    "sensitivity_range": "scale 0.5-1.75",
+    "label": "indirect_estimate",
+    "basis": "Szpunar 2013: 41% in lab lecture, 19% with interpolated tests; Wammes 2016: low in motivated real classes"
+   },
+   {
+    "name": "mw within-block slope (NEW/PROB/RET/MOCK) x mw_slope_scale",
+    "value": "0.05/0.025/0.015/0 per h x1.0",
+    "sensitivity_range": "scale 0.5-2.0",
+    "label": "indirect_estimate",
+    "basis": "Risko 2012 rise over a lecture; Hopstaken 2015 ~2 h decline reversible; Sievertsen 2016 -0.9% SD/h, breaks +1.7% SD"
+   },
+   {
+    "name": "sens (state sensitivity exponents NEW/PROB/RET/MOCK) x sens_scale",
+    "value": "1.3/1.2/0.8/1.0 x1.0",
+    "sensitivity_range": "scale 0.7-1.4",
+    "label": "indirect_estimate",
+    "basis": "Lowe 2017 executive g=-0.32 vs LTM -0.19; Newbury 2021 encoding most sleep-sensitive"
+   },
+   {
+    "name": "warm_day / warm_meal (first-slot engagement loss)",
+    "value": "0.15 / 0.08",
+    "sensitivity_range": "warm_day 0-0.30 run; warm_meal declared 0-0.2",
+    "label": "assumption",
+    "basis": "Settling in and sleep inertia; lets hour 2 exceed hour 1"
+   },
+   {
+    "name": "sat_rate (per-stream saturation per engaged h)",
+    "value": "0.35",
+    "sensitivity_range": "0.15-0.70",
+    "label": "indirect_estimate",
+    "basis": "Rohrer & Taylor 2006: 9 vs 3 problems in one session gave no gain, spacing doubled; Rohrer 2005: overlearning benefit gone by 4 wk"
+   },
+   {
+    "name": "n_streams (NEW/PROB/RET) x stream_scale",
+    "value": "4/5/6 x1.0 (MOCK none)",
+    "sensitivity_range": "scale 0.5-2.0",
+    "label": "assumption",
+    "basis": "Number of distinct content streams rotated per day"
+   },
+   {
+    "name": "enc_eps (daily encoding-capacity decline)",
+    "value": "0.12",
+    "sensitivity_range": "0-0.25",
+    "label": "indirect_estimate",
+    "basis": "Mander 2011 (n=44, magnitude not seen); preregistered nulls (Guttesen 2025) -> kept small"
+   },
+   {
+    "name": "enc_scale",
+    "value": "4 engaged-h",
+    "sensitivity_range": "2-6 (declared, not run)",
+    "label": "assumption",
+    "basis": "Load for 63% of enc_eps"
+   },
+   {
+    "name": "drift_max",
+    "value": "0.35",
+    "sensitivity_range": "0.15-0.55",
+    "label": "assumption",
+    "basis": "Blain 2016 / Wiehler 2022 inference; untested for studying"
+   },
+   {
+    "name": "drift_L50 (effort load at half-max drift)",
+    "value": "6.5 demand-weighted engaged h",
+    "sensitivity_range": "5.0-8.0",
+    "label": "indirect_estimate",
+    "basis": "Blain 2016: shift to low-effort choices after ~6-6.25 h of hard work"
+   },
+   {
+    "name": "drift_s",
+    "value": "1.2 h",
+    "sensitivity_range": "0.6-2.0",
+    "label": "assumption",
+    "basis": "Logistic width"
+   },
+   {
+    "name": "rho (low-effort yield ratio NEW/PROB/RET/MOCK) x rho_scale",
+    "value": "0.60/0.55/0.66/0.70",
+    "sensitivity_range": "scale 0.8-1.2",
+    "label": "literature_constrained",
+    "basis": "RET: Roediger & Karpicke 2006 (40% vs 61% at 1 wk), Rowland 2014 g=0.50; other types are assumptions"
+   },
+   {
+    "name": "susc (drift susceptibility NEW/PROB/RET/MOCK)",
+    "value": "1.0/1.0/0.6/0.3",
+    "sensitivity_range": "not varied",
+    "label": "assumption",
+    "basis": "Timed tests and retrieval resist method drift"
+   },
+   {
+    "name": "beta_break",
+    "value": "0.15 per h of break",
+    "sensitivity_range": "0-0.40",
+    "label": "assumption",
+    "basis": "Albulescu 2022: longer breaks better; Sievertsen 2016 break effect"
+   },
+   {
+    "name": "L_sus (sustainable daily load)",
+    "value": "5.5 load-h (~8-8.5 nominal h)",
+    "sensitivity_range": "4.5-6.5 (stress test 4.0)",
+    "label": "indirect_estimate",
+    "basis": "Pencavel 2015: output proportional below ~49 h/wk; munitions work, so indirect"
+   },
+   {
+    "name": "eta (strain inflow)",
+    "value": "0.12 per load-h over L_sus",
+    "sensitivity_range": "0.06-0.24 (stress 0.36-0.72)",
+    "label": "assumption",
+    "basis": "No direct evidence"
+   },
+   {
+    "name": "mu0 (baseline strain decay)",
+    "value": "0.05/day",
+    "sensitivity_range": "0.03-0.10",
+    "label": "indirect_estimate",
+    "basis": "de Bloom 2009 / Speth 2024: recovery effects fade over 1-4 weeks"
+   },
+   {
+    "name": "mu_leis_max / leis_scale",
+    "value": "0.30 / 3 h",
+    "sensitivity_range": "0.15-0.45 / 1.5-6",
+    "label": "assumption",
+    "basis": "Binnewies 2010: weekend recovery predicts next-week performance; saturating in leisure hours"
+   },
+   {
+    "name": "mu_exmed",
+    "value": "0.02 per h",
+    "sensitivity_range": "0-0.05 (declared, not run)",
+    "label": "assumption",
+    "basis": "Exercise/meditation recovery; no direct cognitive benefit modelled"
+   },
+   {
+    "name": "f_max / F_scale (strain -> engagement)",
+    "value": "0.25 / 4",
+    "sensitivity_range": "0.15-0.40 / 2.5-6 (stress up to 0.6)",
+    "label": "indirect_estimate",
+    "basis": "Madigan & Curran 2021: burnout-achievement r=-0.24 (correlational)"
+   },
+   {
+    "name": "adapt_max / adapt_tau",
+    "value": "0.15 / 30 d",
+    "sensitivity_range": "0-0.30 / 15-60 (tau declared)",
+    "label": "indirect_estimate",
+    "basis": "Brown et al. 2025: 22% less within-test decline after practice; applied only to within-block slopes and drift"
+   },
+   {
+    "name": "v (value per engaged rested h NEW/PROB/RET/MOCK)",
+    "value": "1.00/1.10/0.95/0.85",
+    "sensitivity_range": "not varied individually (task-mix variants and allocation tested)",
+    "label": "assumption",
+    "basis": "7-day test includes application (PROB highest); RET prevents forgetting; much MOCK time is diagnostic"
+   },
+   {
+    "name": "e0 (on-task share NEW/PROB/RET/MOCK)",
+    "value": "0.88/0.88/0.90/0.95",
+    "sensitivity_range": "not varied",
+    "label": "assumption",
+    "basis": "Short breaks and lapses are inside the nominal hour"
+   },
+   {
+    "name": "demand (NEW/PROB/RET/MOCK)",
+    "value": "0.8/1.0/0.6/1.0",
+    "sensitivity_range": "not varied",
+    "label": "assumption",
+    "basis": "Cognitive-control weight in effort load"
+   },
+   {
+    "name": "fixed daily task mix",
+    "value": "NEW 25% / PROB 40% / RET 25% / MOCK 10%",
+    "sensitivity_range": "new-heavy 40/35/15/10; review-heavy 15/40/35/10",
+    "label": "assumption",
+    "basis": "Typical repeat-student day; R/A tables use this mix in every hour"
+   },
+   {
+    "name": "day layout",
+    "value": "blocks <=4 h, lunch, <=5 h, dinner(+exercise), remainder; wake fixed, extra hours added in the evening",
+    "sensitivity_range": "not varied",
+    "label": "assumption",
+    "basis": "Typical academy day; prompt-1 life split 20/30/30/20% morning/lunch/dinner/evening"
+   }
+  ],
+  "hourly_tables": [
+   {
+    "scenario": "S1",
+    "timepoint": "wk1-2",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     80,
+     80,
+     85,
+     85,
+     80,
+     75,
+     70
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     80,
+     90,
+     85,
+     80,
+     75,
+     70,
+     80,
+     75,
+     70,
+     65,
+     60
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     85,
+     85,
+     90,
+     90,
+     85,
+     80,
+     75
+    ],
+    "A": [
+     90,
+     85,
+     85,
+     80,
+     85,
+     80,
+     75,
+     70,
+     70,
+     75,
+     75,
+     70,
+     65,
+     60
+    ],
+    "first_hour_A": 90,
+    "daily_RHE": 10.6
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "1m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     80,
+     80,
+     85,
+     85,
+     80,
+     75,
+     70
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     80,
+     90,
+     85,
+     80,
+     75,
+     70,
+     80,
+     75,
+     70,
+     70,
+     65
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     85,
+     85,
+     90,
+     90,
+     85,
+     80,
+     80
+    ],
+    "A": [
+     85,
+     85,
+     80,
+     75,
+     80,
+     75,
+     70,
+     70,
+     65,
+     75,
+     70,
+     65,
+     65,
+     60
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 10.1
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "3m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     85,
+     85,
+     80,
+     75,
+     75
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     75,
+     70,
+     80,
+     75,
+     75,
+     70,
+     65
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     85,
+     85,
+     95,
+     90,
+     85,
+     85,
+     80
+    ],
+    "A": [
+     85,
+     80,
+     80,
+     75,
+     80,
+     75,
+     70,
+     70,
+     65,
+     70,
+     70,
+     65,
+     65,
+     60
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 10.1
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "6m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     85,
+     85,
+     80,
+     75,
+     75
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     75,
+     70,
+     80,
+     75,
+     75,
+     70,
+     65
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     85,
+     85,
+     95,
+     90,
+     85,
+     85,
+     80
+    ],
+    "A": [
+     85,
+     80,
+     80,
+     75,
+     80,
+     75,
+     70,
+     70,
+     65,
+     70,
+     70,
+     65,
+     65,
+     60
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 10.1
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "12m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     85,
+     85,
+     80,
+     75,
+     75
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     75,
+     70,
+     80,
+     75,
+     75,
+     70,
+     65
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     85,
+     85,
+     95,
+     90,
+     85,
+     85,
+     80
+    ],
+    "A": [
+     85,
+     80,
+     80,
+     75,
+     80,
+     75,
+     70,
+     70,
+     65,
+     70,
+     70,
+     65,
+     65,
+     60
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 10.1
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "wk1-2",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     80,
+     80,
+     85,
+     85,
+     80,
+     75,
+     65
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     80,
+     90,
+     85,
+     80,
+     75,
+     70,
+     80,
+     75,
+     70,
+     65,
+     60
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     85,
+     85,
+     90,
+     90,
+     85,
+     80,
+     75
+    ],
+    "A": [
+     85,
+     85,
+     80,
+     75,
+     80,
+     75,
+     70,
+     70,
+     70,
+     75,
+     70,
+     70,
+     65,
+     55
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 10.3
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "1m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     85,
+     85,
+     80,
+     75,
+     65
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     80,
+     90,
+     85,
+     80,
+     75,
+     70,
+     80,
+     75,
+     75,
+     65,
+     60
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     85,
+     85,
+     95,
+     90,
+     85,
+     80,
+     70
+    ],
+    "A": [
+     80,
+     80,
+     75,
+     70,
+     75,
+     70,
+     65,
+     65,
+     65,
+     70,
+     70,
+     65,
+     60,
+     55
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 9.7
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "3m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     90,
+     85,
+     80,
+     75,
+     70
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     75,
+     70,
+     80,
+     75,
+     75,
+     70,
+     60
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     90,
+     85,
+     95,
+     90,
+     85,
+     80,
+     75
+    ],
+    "A": [
+     80,
+     80,
+     75,
+     70,
+     75,
+     70,
+     65,
+     65,
+     65,
+     70,
+     65,
+     65,
+     60,
+     55
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 9.6
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "6m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     90,
+     85,
+     80,
+     75,
+     70
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     75,
+     75,
+     80,
+     75,
+     75,
+     70,
+     60
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     90,
+     85,
+     95,
+     90,
+     85,
+     80,
+     75
+    ],
+    "A": [
+     80,
+     80,
+     75,
+     70,
+     75,
+     70,
+     65,
+     65,
+     65,
+     70,
+     65,
+     65,
+     60,
+     55
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 9.6
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "12m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     90,
+     85,
+     80,
+     75,
+     70
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     75,
+     75,
+     80,
+     75,
+     75,
+     70,
+     60
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     90,
+     85,
+     95,
+     90,
+     85,
+     80,
+     75
+    ],
+    "A": [
+     80,
+     80,
+     75,
+     70,
+     75,
+     70,
+     65,
+     65,
+     65,
+     70,
+     65,
+     65,
+     60,
+     55
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 9.6
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "wk1-2",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     85,
+     85,
+     75,
+     70,
+     60
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     80,
+     90,
+     85,
+     80,
+     75,
+     70,
+     80,
+     75,
+     70,
+     60,
+     50
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     90,
+     90,
+     85,
+     85,
+     90,
+     90,
+     80,
+     75,
+     65
+    ],
+    "A": [
+     80,
+     80,
+     75,
+     70,
+     75,
+     70,
+     65,
+     65,
+     65,
+     70,
+     65,
+     60,
+     55,
+     50
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 9.4
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "1m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     90,
+     85,
+     75,
+     65,
+     60
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     75,
+     70,
+     75,
+     70,
+     60,
+     55,
+     45
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     90,
+     85,
+     95,
+     90,
+     80,
+     75,
+     65
+    ],
+    "A": [
+     75,
+     70,
+     70,
+     65,
+     70,
+     65,
+     60,
+     60,
+     60,
+     65,
+     60,
+     55,
+     50,
+     40
+    ],
+    "first_hour_A": 75,
+    "daily_RHE": 8.7
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "3m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     90,
+     85,
+     75,
+     65,
+     60
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     80,
+     75,
+     75,
+     70,
+     60,
+     55,
+     45
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     90,
+     85,
+     95,
+     90,
+     80,
+     75,
+     70
+    ],
+    "A": [
+     75,
+     75,
+     70,
+     65,
+     70,
+     65,
+     60,
+     60,
+     60,
+     65,
+     60,
+     55,
+     50,
+     45
+    ],
+    "first_hour_A": 75,
+    "daily_RHE": 8.7
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "6m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     90,
+     85,
+     75,
+     65,
+     60
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     80,
+     75,
+     75,
+     70,
+     60,
+     55,
+     45
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     90,
+     85,
+     95,
+     90,
+     80,
+     75,
+     70
+    ],
+    "A": [
+     75,
+     75,
+     70,
+     65,
+     70,
+     65,
+     65,
+     60,
+     60,
+     65,
+     60,
+     55,
+     50,
+     45
+    ],
+    "first_hour_A": 75,
+    "daily_RHE": 8.8
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "12m",
+    "R": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85,
+     80,
+     90,
+     85,
+     75,
+     70,
+     60
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     80,
+     75,
+     80,
+     70,
+     65,
+     55,
+     50
+    ],
+    "R_high": [
+     100,
+     105,
+     100,
+     95,
+     100,
+     95,
+     90,
+     90,
+     85,
+     95,
+     90,
+     80,
+     75,
+     70
+    ],
+    "A": [
+     75,
+     75,
+     70,
+     65,
+     70,
+     65,
+     65,
+     60,
+     60,
+     65,
+     60,
+     55,
+     50,
+     45
+    ],
+    "first_hour_A": 75,
+    "daily_RHE": 8.8
+   }
+  ],
+  "thresholds": [
+   {
+    "scenario": "S1",
+    "timepoint": "wk1-2",
+    "first_hour_R_le_80": "h9 transient (raw R 78.8 at the end of the 5-h afternoon block; recovers to 86 after dinner). Sustained from h12; the sustained-only curve also crosses at h12. One-at-a-time (OAT) range: first crossing h7-h14.",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h14.",
+    "note": "Raw R: 100, 99, 94, 90, 95, 90, 83, 81, 79, 86, 84, 79, 75, 70. Thresholds use unrounded R, so a table value of 80 can be a raw 80.9-81.4 that does not count. Stacked-pessimistic corner first reaches <=80 at h4 (transient, end of morning block); stacked-optimistic corner never does."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "1m",
+    "first_hour_R_le_80": "h13 sustained (h9 raw 80.2, just above). Sustained-only curve: h13. OAT range: h7-h14.",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h14.",
+    "note": "Raw R: 100, 99, 95, 91, 95, 91, 84, 82, 80.2, 87, 85, 80.5, 76, 72. Transient dips: h4 (end of morning block) and h7-h9 (post-lunch dip plus end of afternoon block). They recover 4-7 points after lunch and after dinner."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "3m",
+    "first_hour_R_le_80": "h13 sustained. Sustained-only curve: h13. OAT range: h7-h14 (h7 = strong saturation or few content streams; h14 = weak saturation).",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h14.",
+    "note": "Raw R: 100, 99, 95, 91, 95, 91, 84.5, 82.5, 80.9, 87, 85, 81, 77, 73."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "6m",
+    "first_hour_R_le_80": "h13 sustained. Sustained-only curve: h13. OAT range: h7-h14.",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h14.",
+    "note": "Raw R: 100, 99.5, 95, 91, 95, 91, 84.5, 82.6, 81.0, 87, 85, 81, 77, 73. Essentially identical to 3m: states reach equilibrium within about 4-6 weeks."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "12m",
+    "first_hour_R_le_80": "h13 sustained. Sustained-only curve: h13. OAT range: h7-h14.",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h14.",
+    "note": "Raw R: 100, 99.5, 95, 91, 95, 91, 84.5, 82.6, 81.0, 87, 85, 81, 77, 73."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "wk1-2",
+    "first_hour_R_le_80": "h9 transient (raw 79.2 at the end of the afternoon block; recovers to 87 after dinner). Sustained from h12; sustained-only curve h12. OAT range: h7-h14.",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h13.",
+    "note": "Raw R: 100, 99, 94, 90, 94, 89, 83.5, 82, 79.2, 87, 84, 79.4, 74, 67. Weeks 1-2 have slightly steeper within-block slopes because adaptation has not yet built up (alpha ~0), but a higher A, because debt and strain are still low."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "1m",
+    "first_hour_R_le_80": "h13 sustained (h9 raw 80.6). Sustained-only curve: h13. OAT range: h7-h14.",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h12.",
+    "note": "Raw R: 100, 99, 95, 90.5, 94.5, 90, 84, 83, 80.6, 87.5, 85, 81, 75, 67."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "3m",
+    "first_hour_R_le_80": "h13 sustained (h9 raw 81.3, shown as 80 in the table). Sustained-only curve: h13. OAT range: h7-h14. The first crossing moves to the h9 transient dip whenever an assumption is slightly more pessimistic: mind-wandering slope x2 gives h8; enc_eps 0.25, drift_L50 5, no adaptation, or no warm-up each give h9. Strong saturation (sat_rate 0.7 or half the streams) gives h7; weak saturation gives h14.",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h12.",
+    "note": "Raw R: 100, 99, 95, 91, 94.6, 90, 85, 84, 81.3, 87.6, 85, 81.4, 76, 68. Components at h14 relative to h1: engagement 0.60 vs 0.65, time-awake state 0.85 vs 0.93, saturation 0.86, encoding 0.96, method quality 0.95."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "6m",
+    "first_hour_R_le_80": "h13 sustained. Sustained-only curve: h13. OAT range: h7-h14.",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h12.",
+    "note": "Raw R: 100, 99.5, 95, 91, 94.6, 90, 85, 84, 81.4, 87.6, 85, 81.4, 76, 68."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "12m",
+    "first_hour_R_le_80": "h13 sustained. Sustained-only curve: h13. OAT range: h7-h14.",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h12.",
+    "note": "Raw R: 100, 99.5, 95, 91, 94.6, 90, 85, 84, 81.4, 87.6, 85, 81.4, 76, 68."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "wk1-2",
+    "first_hour_R_le_80": "h9 transient (raw 79.4; recovers to 87 after dinner). Sustained from h12; sustained-only curve h12. OAT range: h7-h13.",
+    "first_hour_R_le_50": "Not reached by h14 in base or any OAT setting. Stacked-pessimistic corner: h12.",
+    "note": "Raw R: 100, 99, 94, 90, 94, 88, 84, 83, 79.4, 87, 83, 76, 68, 60."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "1m",
+    "first_hour_R_le_80": "h12 sustained. Sustained-only curve: h12. OAT range: h7-h13.",
+    "first_hour_R_le_50": "Not reached by h14 in base. OAT: h14 in 3 of 67 settings. Stacked-pessimistic corner: h9.",
+    "note": "Raw R: 100, 99, 95, 91, 94, 89, 85, 84, 80.8, 87.6, 83, 74, 66, 58. The steep h12-h14 fall comes from time awake (~15.5-17 h) combined with ~9 h of debt pulling the decline threshold to ~12.8 h awake."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "3m",
+    "first_hour_R_le_80": "h12 sustained. Sustained-only curve: h12. OAT range: first crossing h7-h13, sustained onset h10-h13.",
+    "first_hour_R_le_50": "Not reached by h14 in base. OAT: h14 in 2 of 67 settings. Stacked-pessimistic corner: h9.",
+    "note": "Raw R: 100, 99.5, 95, 91, 94, 89, 85, 84, 81.5, 87.7, 84, 75.6, 67, 59."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "6m",
+    "first_hour_R_le_80": "h12 sustained. Sustained-only curve: h12. OAT range: first crossing h7-h13, sustained onset h10-h13.",
+    "first_hour_R_le_50": "Not reached by h14 in base. OAT: h14 in 1 of 67 settings. Stacked-pessimistic corner: h9.",
+    "note": "Raw R: 100, 99.5, 95, 91, 94, 89, 85, 84, 81.5, 87.7, 84.6, 76, 67.5, 60."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "12m",
+    "first_hour_R_le_80": "h12 sustained. Sustained-only curve: h12. OAT range: first crossing h7-h13, sustained onset h10-h13.",
+    "first_hour_R_le_50": "Not reached by h14 in base. OAT: h14 in 1 of 67 settings. Stacked-pessimistic corner: h9.",
+    "note": "Raw R: 100, 99.5, 95, 91, 94, 89, 85, 84, 81.5, 87.7, 84.5, 76, 68, 60."
+   }
+  ],
+  "schedule_comparison": [
+   {
+    "framework": "prompt1",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8.3,
+    "leisure_h": 4.61,
+    "annual_RHE": 2479,
+    "annual_nominal_hours": 2712,
+    "note": "Base S2 (life 2.5 h). Freed time goes first to sleep, up to 8.3 h actual (TIB 8.89 h at eff 0.933); the rest goes to leisure. S1 (life 1.75): sleep 8.30 h, RHE 2480. S3 (life 3.0, irregular): sleep 8.30 h, RHE 2371."
+   },
+   {
+    "framework": "prompt1",
+    "hours": 10,
+    "feasible": true,
+    "actual_sleep_h": 8.3,
+    "leisure_h": 2.61,
+    "annual_RHE": 2986,
+    "annual_nominal_hours": 3390,
+    "note": "S1: RHE 2989. S3: RHE 2850. Sleep stays at 8.3 h in all three scenarios."
+   },
+   {
+    "framework": "prompt1",
+    "hours": 12,
+    "feasible": true,
+    "actual_sleep_h": 8.3,
+    "leisure_h": 0.61,
+    "annual_RHE": 3362,
+    "annual_nominal_hours": 4068,
+    "note": "S1: sleep 8.3 h, leisure 1.24 h, RHE 3398. S3: sleep 8.10 h (TIB capped), leisure 0, RHE 3117."
+   },
+   {
+    "framework": "prompt1",
+    "hours": 14,
+    "feasible": true,
+    "actual_sleep_h": 7,
+    "leisure_h": 0,
+    "annual_RHE": 3271,
+    "annual_nominal_hours": 4746,
+    "note": "Digest S2: TIB 7.5 h. S1: sleep 7.6 h, RHE 3431 (the highest prompt-1 total). S3: sleep 6.3 h, irregular, RHE 2958 (below S3 at 12 h: 3117)."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 3.1,
+    "annual_RHE": 2424,
+    "annual_nominal_hours": 2712,
+    "note": "Feasible: 8.0 h sleep, TIB 8.60 h, life 4.30 h, leisure 3.10 h."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 10,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 1.1,
+    "annual_RHE": 2912,
+    "annual_nominal_hours": 3390,
+    "note": "Feasible, with leisure 1.10 h."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 12,
+    "feasible": false,
+    "actual_sleep_h": 7.16,
+    "leisure_h": 0,
+    "annual_RHE": 3073,
+    "annual_nominal_hours": 4068,
+    "note": "INFEASIBLE (max 11.1 h). Conditional variant shown: sleep cut to 7.16 h, breaking the 8.0 h condition -> RHE 3073. Alternative: drop exercise and meditation and keep 8.0 h sleep -> RHE 3275."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 14,
+    "feasible": false,
+    "actual_sleep_h": 5.3,
+    "leisure_h": 0,
+    "annual_RHE": 2838,
+    "annual_nominal_hours": 4746,
+    "note": "INFEASIBLE by 2.9 h/day. Sleep-cut variant (5.3 h actual): RHE 2838, less than feasible 10 h (2912). Alternative: drop exercise and meditation, then cut sleep to 6.59 h -> RHE 3161."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 4.65,
+    "annual_RHE": 2425,
+    "annual_nominal_hours": 2712,
+    "note": "Feasible: life 2.93 h, TIB 8.42 h."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 10,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 2.65,
+    "annual_RHE": 2925,
+    "annual_nominal_hours": 3390,
+    "note": "Feasible."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 12,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 0.65,
+    "annual_RHE": 3314,
+    "annual_nominal_hours": 4068,
+    "note": "Feasible (max 12.65 h)."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 14,
+    "feasible": false,
+    "actual_sleep_h": 6.72,
+    "leisure_h": 0,
+    "annual_RHE": 3243,
+    "annual_nominal_hours": 4746,
+    "note": "INFEASIBLE by 1.35 h/day. Sleep-cut variant (6.72 h): RHE 3243, less than 12 h feasible (3314). Alternative: drop exercise and meditation, then cut sleep to 7.76 h -> RHE 3467, which is higher than 12 h but breaks both the exercise and sleep conditions."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 1,
+    "annual_RHE": 2426,
+    "annual_nominal_hours": 2712,
+    "note": "Feasible: life 6.11 h, TIB 8.89 h, leisure 1.0 h."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 10,
+    "feasible": false,
+    "actual_sleep_h": 7.1,
+    "leisure_h": 0,
+    "annual_RHE": 2709,
+    "annual_nominal_hours": 3390,
+    "note": "INFEASIBLE (max 9.0 h). Sleep-cut variant (7.10 h): RHE 2709. Alternative: drop exercise and meditation and keep 8.0 h sleep -> RHE 2895."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 12,
+    "feasible": false,
+    "actual_sleep_h": 5.3,
+    "leisure_h": 0,
+    "annual_RHE": 2612,
+    "annual_nominal_hours": 4068,
+    "note": "INFEASIBLE. Sleep-cut variant (5.3 h): RHE 2612. Alternative: drop exercise and meditation, then cut sleep to 6.83 h -> RHE 2951."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 14,
+    "feasible": false,
+    "actual_sleep_h": 3.5,
+    "leisure_h": 0,
+    "annual_RHE": 2349,
+    "annual_nominal_hours": 4746,
+    "note": "INFEASIBLE by 5 h/day. Sleep-cut variant (3.5 h, far outside the model's calibrated range): RHE 2349. Alternative: drop exercise and meditation, then cut sleep to 5.02 h -> RHE 2725."
+   }
+  ],
+  "increments": [
+   {
+    "framework": "prompt1_S2 (base)",
+    "step": "8->10",
+    "block_contribution_RHE": 549,
+    "spillover_RHE": -42,
+    "net_RHE": 507,
+    "note": "Spillover channels: sleep 0, leisure/recovery -7, load->strain -35. Sleep stays 8.30 h; leisure 4.61 -> 2.61 h."
+   },
+   {
+    "framework": "prompt1_S2 (base)",
+    "step": "10->12",
+    "block_contribution_RHE": 517,
+    "spillover_RHE": -142,
+    "net_RHE": 376,
+    "note": "Spillover channels: sleep 0, leisure -68, load->strain -73. Sleep stays 8.30 h; leisure 2.61 -> 0.61 h."
+   },
+   {
+    "framework": "prompt1_S2 (base)",
+    "step": "12->14",
+    "block_contribution_RHE": 386,
+    "spillover_RHE": -477,
+    "net_RHE": -91,
+    "note": "Spillover channels: sleep -281, leisure -99, load->strain -97. Sleep 8.30 -> 7.00 h; leisure 0.61 -> 0 h. With a hill-climbed allocation at each H: 3426 -> 3337, net -89; allocation lifts both totals by ~2% but does not change the sign. OAT range of the net: -315 to +34; stacked corners -685 / +372."
+   },
+   {
+    "framework": "prompt1_S1",
+    "step": "8->10",
+    "block_contribution_RHE": 548,
+    "spillover_RHE": -39,
+    "net_RHE": 509,
+    "note": "Spillover channels: sleep 0, leisure -5, load->strain -34."
+   },
+   {
+    "framework": "prompt1_S1",
+    "step": "10->12",
+    "block_contribution_RHE": 520,
+    "spillover_RHE": -111,
+    "net_RHE": 409,
+    "note": "Spillover channels: sleep 0, leisure -42, load->strain -68."
+   },
+   {
+    "framework": "prompt1_S1",
+    "step": "12->14",
+    "block_contribution_RHE": 421,
+    "spillover_RHE": -388,
+    "net_RHE": 33,
+    "note": "Spillover channels: sleep -153, leisure -151, load->strain -83. Sleep 8.30 -> 7.60 h. The net is about zero, and its sign flips in 12 of 67 OAT settings (range -74 to +117)."
+   },
+   {
+    "framework": "prompt1_S3",
+    "step": "8->10",
+    "block_contribution_RHE": 525,
+    "spillover_RHE": -46,
+    "net_RHE": 479,
+    "note": "Spillover channels: sleep 0, leisure -11, load->strain -36."
+   },
+   {
+    "framework": "prompt1_S3",
+    "step": "10->12",
+    "block_contribution_RHE": 482,
+    "spillover_RHE": -216,
+    "net_RHE": 266,
+    "note": "Spillover channels: sleep -23, leisure -114, load->strain -79. Sleep 8.30 -> 8.10 h; leisure 1.78 -> 0 h."
+   },
+   {
+    "framework": "prompt1_S3",
+    "step": "12->14",
+    "block_contribution_RHE": 312,
+    "spillover_RHE": -471,
+    "net_RHE": -159,
+    "note": "Spillover channels: sleep -358, leisure 0, load->strain -113. Sleep 8.10 -> 6.30 h. Negative in every OAT setting (-483 to -7); positive only in the stacked-optimistic corner."
+   },
+   {
+    "framework": "prompt2_tight (sleep cut if infeasible)",
+    "step": "8->10",
+    "block_contribution_RHE": 538,
+    "spillover_RHE": -38,
+    "net_RHE": 500,
+    "note": "Spillover channels: sleep 0, leisure -6, load->strain -32."
+   },
+   {
+    "framework": "prompt2_tight (sleep cut if infeasible)",
+    "step": "10->12",
+    "block_contribution_RHE": 510,
+    "spillover_RHE": -121,
+    "net_RHE": 389,
+    "note": "Both schedules feasible. Spillover channels: sleep 0, leisure -54, load->strain -67."
+   },
+   {
+    "framework": "prompt2_tight (sleep cut if infeasible)",
+    "step": "12->14",
+    "block_contribution_RHE": 369,
+    "spillover_RHE": -440,
+    "net_RHE": -71,
+    "note": "14 h is INFEASIBLE, so sleep is cut to 6.72 h. Spillover channels: sleep -274, leisure -80, load->strain -87."
+   },
+   {
+    "framework": "prompt2_tight (drop exercise+meditation first if infeasible)",
+    "step": "12->14",
+    "block_contribution_RHE": 425,
+    "spillover_RHE": -272,
+    "net_RHE": 153,
+    "note": "Conditional variant: exercise and meditation dropped, sleep 7.76 h. Spillover channels: sleep -52, leisure/ex-med recovery -129, load->strain -91. The positive net depends on exercise having no modelled cognitive or sleep benefit beyond strain recovery (see self-critique)."
+   },
+   {
+    "framework": "prompt2_base (sleep cut if infeasible)",
+    "step": "8->10",
+    "block_contribution_RHE": 538,
+    "spillover_RHE": -49,
+    "net_RHE": 488,
+    "note": "Both schedules feasible. Spillover channels: sleep 0, leisure -14, load->strain -36."
+   },
+   {
+    "framework": "prompt2_base (sleep cut if infeasible)",
+    "step": "10->12",
+    "block_contribution_RHE": 473,
+    "spillover_RHE": -312,
+    "net_RHE": 161,
+    "note": "12 h is INFEASIBLE, so sleep is cut to 7.16 h. Spillover channels: sleep -159, leisure -69, load->strain -84."
+   },
+   {
+    "framework": "prompt2_base (sleep cut if infeasible)",
+    "step": "12->14",
+    "block_contribution_RHE": 270,
+    "spillover_RHE": -505,
+    "net_RHE": -235,
+    "note": "Sleep cut 7.16 -> 5.30 h. Spillover channels: sleep -407, load->strain -97."
+   },
+   {
+    "framework": "prompt2_base (drop exercise+meditation first if infeasible)",
+    "step": "10->12",
+    "block_contribution_RHE": 503,
+    "spillover_RHE": -140,
+    "net_RHE": 363,
+    "note": "Conditional variant: exercise and meditation dropped, sleep kept at 8.0 h. Spillover channels: leisure/ex-med -54, load->strain -86."
+   },
+   {
+    "framework": "prompt2_base (drop exercise+meditation first if infeasible)",
+    "step": "12->14",
+    "block_contribution_RHE": 359,
+    "spillover_RHE": -474,
+    "net_RHE": -115,
+    "note": "Sleep cut to 6.59 h. Spillover channels: sleep -294, leisure -82, load->strain -98."
+   },
+   {
+    "framework": "prompt2_generous (sleep cut if infeasible)",
+    "step": "8->10",
+    "block_contribution_RHE": 501,
+    "spillover_RHE": -219,
+    "net_RHE": 283,
+    "note": "10 h is INFEASIBLE, so sleep is cut to 7.10 h. Spillover channels: sleep -145, leisure -24, load->strain -49."
+   },
+   {
+    "framework": "prompt2_generous (sleep cut if infeasible)",
+    "step": "10->12",
+    "block_contribution_RHE": 327,
+    "spillover_RHE": -423,
+    "net_RHE": -96,
+    "note": "Sleep 7.10 -> 5.30 h. Spillover channels: sleep -313, load->strain -110."
+   },
+   {
+    "framework": "prompt2_generous (sleep cut if infeasible)",
+    "step": "12->14",
+    "block_contribution_RHE": 166,
+    "spillover_RHE": -430,
+    "net_RHE": -264,
+    "note": "Sleep 5.3 -> 3.5 h, far outside the calibrated range. Spillover channels: sleep -349, load->strain -81."
+   },
+   {
+    "framework": "prompt2_generous (drop exercise+meditation first if infeasible)",
+    "step": "8->10",
+    "block_contribution_RHE": 534,
+    "spillover_RHE": -65,
+    "net_RHE": 469,
+    "note": "Exercise and meditation dropped, sleep kept at 8.0 h. Spillover channels: leisure -15, load->strain -50."
+   },
+   {
+    "framework": "prompt2_generous (drop exercise+meditation first if infeasible)",
+    "step": "10->12",
+    "block_contribution_RHE": 450,
+    "spillover_RHE": -394,
+    "net_RHE": 56,
+    "note": "Sleep cut to 6.83 h. Spillover channels: sleep -217, leisure -72, load->strain -105."
+   },
+   {
+    "framework": "prompt2_generous (drop exercise+meditation first if infeasible)",
+    "step": "12->14",
+    "block_contribution_RHE": 255,
+    "spillover_RHE": -481,
+    "net_RHE": -226,
+    "note": "Sleep cut to 5.02 h. Spillover channels: sleep -374, load->strain -106."
+   }
+  ],
+  "optimization": [
+   {
+    "scenario": "A",
+    "daily_hours": 11,
+    "full_rest_days_per_14": 1,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 6,
+    "annual_RHE": 3087,
+    "annual_nominal_hours": 3729,
+    "near_optimal_band": "Within 2%: 10.75-11.0 h/day, 1 full rest day, no partial day (2 plans). Within 5%: 10.25-11.0 h with 1 rest day; 11.0 h plus 1 partial day (-2.6%).",
+    "note": "Base budget, 8.0 h sleep. Annual RHE rises monotonically up to the feasibility limit (11.1 h). The marginal value of the last quarter hour falls from 0.81 RHE per nominal hour at 7 h/day to 0.39 at 11 h/day but stays positive. A 2nd full rest day costs 6.5%, a 3rd 13%, a 4th 21%. A hill-climbed task allocation raises the total to 3140 (+1.7%). The optimum stays at 11.0 h in all 67 OAT settings and both stacked corners. It moves inward only when strain is at least 3x the base: 10.5 h (band 10-11) at 3x, 10.0 h (band 9-11) at 6x. One rest day per 14 still wins in those stress tests."
+   },
+   {
+    "scenario": "B60",
+    "daily_hours": 10,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 66,
+    "annual_RHE": 2704,
+    "annual_nominal_hours": 3130,
+    "near_optimal_band": "Within 2%: 9.75-10.0 h, 2 full rest days, no partial day.",
+    "note": "Best plan = the largest H that satisfies the 60-min floor, with the minimum allowed rest (1 per week). -12.4% vs A: about 6.5 points from the second rest day, the rest from fewer hours."
+   },
+   {
+    "scenario": "B90",
+    "daily_hours": 9.5,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 96,
+    "annual_RHE": 2595,
+    "annual_nominal_hours": 2973.5,
+    "near_optimal_band": "Only 9.5 h/2 rest/0 partial is within 2%; 9.25 h is ~2.2% lower.",
+    "note": "-16.0% vs A. Same structure: sits on the floor constraint. Optimum unchanged (9.5 h, 2 rest days) in all OAT settings and stress tests; only the band widens to 9.0-9.5 under 6x strain."
+   },
+   {
+    "scenario": "B120",
+    "daily_hours": 9,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 126,
+    "annual_RHE": 2482,
+    "annual_nominal_hours": 2817,
+    "near_optimal_band": "Only 9.0 h/2 rest/0 partial is within 2%.",
+    "note": "-19.6% vs A. Each extra 30 min of leisure floor costs about 4% of annual RHE, almost entirely through fewer nominal hours. The model's leisure->recovery benefit is small because strain is already low below ~10 h/day."
+   },
+   {
+    "scenario": "A_tight_budget",
+    "daily_hours": 12.5,
+    "full_rest_days_per_14": 1,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 9,
+    "annual_RHE": 3362,
+    "annual_nominal_hours": 4237.5,
+    "near_optimal_band": "12.0-12.5 h, 1 rest day, no partial day.",
+    "note": "Tight life budget (2.93 h). The optimum again sits at the feasibility limit (12.65 h)."
+   },
+   {
+    "scenario": "A_generous_budget",
+    "daily_hours": 9,
+    "full_rest_days_per_14": 1,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 0,
+    "annual_RHE": 2676,
+    "annual_nominal_hours": 3051,
+    "near_optimal_band": "8.75-9.0 h, 1 rest day.",
+    "note": "Generous life budget (6.11 h): the limit is 9.0 h."
+   },
+   {
+    "scenario": "B90_tight_budget",
+    "daily_hours": 11,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 99,
+    "annual_RHE": 2923,
+    "annual_nominal_hours": 3443,
+    "near_optimal_band": "10.75-11.0 h, 2 rest days.",
+    "note": "Tight budget with a 90-min floor and weekly rest."
+   },
+   {
+    "scenario": "B90_generous_budget",
+    "daily_hours": 7.5,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 90,
+    "annual_RHE": 2120,
+    "annual_nominal_hours": 2347.5,
+    "near_optimal_band": "7.5 h only.",
+    "note": "Generous budget with a 90-min floor and weekly rest."
+   },
+   {
+    "scenario": "A_stress_strain_x3 (other)",
+    "daily_hours": 10.5,
+    "full_rest_days_per_14": 1,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 36,
+    "annual_RHE": 2639,
+    "annual_nominal_hours": 3559.5,
+    "near_optimal_band": "10.0-11.0 h, 1 full rest day, 0-1 partial days.",
+    "note": "eta 0.36, f_max 0.40, L_sus 4.5. This is the smallest strain setting tested that pulls the optimum inside the feasible limit. With eta 0.72, f_max 0.6 and L_sus 4.0 the optimum is 10.0 h (band 9-11)."
+   }
+  ],
+  "sensitivity": [
+   {
+    "assumption": "Content saturation: sat_rate, and number of content streams per day",
+    "variation": "sat_rate 0.15-0.70; streams x0.5-x2",
+    "effect": "(a) S2 3m first R<=80: h7 (strong saturation or few streams) to h14 (weak). R at h14: 60-75. (b) 12->14 net S2: -97 to -85. (c) optimum unchanged.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Within-block mind-wandering slope",
+    "variation": "x0.5 to x2",
+    "effect": "(a) x2 moves the first R<=80 to h8, a transient end-of-block dip; the sustained onset stays about h12-13. (b) net about -90. (c) unchanged.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Near-threshold transient h9 dip (warm-up 0, enc_eps 0.25, drift_L50 5.0, adaptation 0, new-heavy mix)",
+    "variation": "single changes",
+    "effect": "(a) each moves the first R<=80 from h13 to h9, because base h9 sits at R=81 (end of the 5-h afternoon block) and recovers after dinner. (b) net changes by <=12. (c) unchanged.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Sleep-debt impairment a_sleep, and debt scale D_scale",
+    "variation": "a_sleep 0.12-0.40; D_scale 12-30",
+    "effect": "(b) 12->14 net: S2 +34 to -234; S1 +102 to -46; S3 -11 to -328. (a) h80 unchanged at h13. (c) unchanged.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Debt leak lam_debt (how fast debt equilibrates and clears)",
+    "variation": "0.10-0.35",
+    "effect": "(b) net S2 -315 to +13; S1 -74 to +81; S3 -483 to -7. (a) h12-13. (c) unchanged.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Sleep need",
+    "variation": "8.0-8.6 h",
+    "effect": "(b) net S2 -35 to -133; S1 +92 to -23 (sign flips).",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Consolidation loss c_cons and shape gamma_cons",
+    "variation": "0.05-0.25; 0.7-2.0",
+    "effect": "(b) net S2 -29 to -145; S1 +70 to -12 (sign flips). Negligible effect on R.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Strain block: f_max, eta, mu0, F_scale, L_sus, leisure recovery",
+    "variation": "f_max 0.15-0.40; eta 0.06-0.24; mu0 0.03-0.10; F_scale 2.5-6; L_sus 4.5-6.5; mu_leis_max 0.15-0.45; leis_scale 1.5-6",
+    "effect": "(b) net S2 -25 to -160 (never positive); S1 +117 to -55 (flips). (c) optimum stays at 11.0 h; the 2% band widens to 10.5-11 h with high eta, high f_max, low F_scale or low L_sus.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Strain stress test beyond the declared range",
+    "variation": "eta 0.36-0.72, f_max 0.4-0.6, L_sus 4.0-4.5",
+    "effect": "(c) optimal H 10.5 h at 3x strain, 10.0 h at 6x (band 9-11). One full rest day per 14 remains best, and B90 stays at 9.5 h. The 10->12 net in prompt-1 S2 falls from +376 to about +23 at 4x and -22 at 6x.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Time-awake decline: tau_crit0, kD_tcrit, w_slope",
+    "variation": "15-17 h; 0.1-0.5; 0.03-0.10",
+    "effect": "(a) h12-13. (b) net S2 -73 to -127; S3 -95 to -265. Largest effect on the h13-h14 values in S3.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "State-sensitivity exponents by task",
+    "variation": "x0.7 to x1.4",
+    "effect": "(b) net S2 -16 to -187; S1 +72 to -17 (flips). A(1) moves by about 3 points.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Late-day drift to low-effort methods (drift_max, drift_s, rho)",
+    "variation": "drift_max 0.15-0.55; s 0.6-2; rho x0.8-x1.2",
+    "effect": "(a) h12-13 (drift_max 0.55 gives h12). (b) net changes by <=8. The effect is small because low-effort methods keep 55-70% of yield and drift peaks only in the last 2-3 hours.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Post-lunch dip amplitude, break recovery beta, rest-day sleep-in cap, S3 irregularity penalty",
+    "variation": "p_dip 0-0.10; beta 0-0.4; ext_cap 1-3 h; irr_pen 0-0.06",
+    "effect": "Each moves the h6-7 values by up to 5 points or the net by <=30 RHE. No threshold or sign changes.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Task mix",
+    "variation": "new-heavy (40/35/15/10) vs review-heavy (15/40/35/10)",
+    "effect": "(a) new-heavy h9 (transient), review-heavy h13. (b) net S2 -103 vs -79. (c) unchanged.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Task allocation (fixed mix vs heuristic vs hill-climbed order)",
+    "variation": "S2 14 h, 3m state",
+    "effect": "Annual RHE 3271 / 3284 (+0.4%) / 3337 (+2.0%). The hourly shape changes a lot: optimized R = 100, 125, 116, 108, 93, 99, 114, 110, 109, 85, 97, 95, 108, 104, and A at h13-14 rises from 60/54 to 73/70, because NEW is placed in morning and post-break slots and RET/MOCK late. The 12->14 net is unchanged (-89 vs -91).",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Adaptation (endurance training)",
+    "variation": "adapt_max 0-0.30",
+    "effect": "Early-vs-late-year R differs by <=2 points. adapt_max=0 moves the S2 3m first-hit to h9 (transient).",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Stacked corners (all channels pessimistic / optimistic together)",
+    "variation": "PESS vs OPT sets",
+    "effect": "Pessimistic: first R<=80 at h4 (transient), R<=50 at h12 (S2) and h9 (S3); 12->14 net S2 -685. Optimistic: R never <=80; net +372 (all scenarios positive). Optimal H stays 11.0 h in both.",
+    "flips_conclusion": true
+   }
+  ],
+  "robust_conclusions": [
+   "Hours 2-6 stay within about 10-15% of hour 1 in every single-assumption variation (R_low >= 80-85 through h6). The early day is flat or slightly saw-toothed, not steeply declining.",
+   "The within-day curve is saw-toothed. Ends of blocks (h4, h8-9) dip 4-7 points and recover after lunch and dinner (transient: block mind wandering, post-lunch dip, warm-up). Underneath is a gradual sustained decline of about 1.5-2 points per hour (saturation, encoding capacity, drift), which steepens after about h12 when time awake and sleep debt combine (S2/S3).",
+   "R never reaches 50 by h14 under S1 or S2 in any single-assumption variation. In S3 it does so in only 1-3 of 67 settings (at h14). Only the stacked-pessimistic corner reaches 50 earlier (h12 in S2, h9 in S3).",
+   "Start-of-day state dominates A. First-hour A drops from ~85-90 in weeks 1-2 to ~85 (S1), ~80 (S2) and ~75 (S3) once debt and strain reach equilibrium (within 3-6 weeks). After month 1, the 1m, 3m, 6m and 12m tables are nearly identical: the model has no linear accumulation, and evidence does not support larger early-vs-late differences.",
+   "A rest day within 13+1 clears part of the debt (S2: 6.1 -> 4.2 h) and about 35% of strain. First-hour A then drifts from ~84 after the rest day to ~77 before the next one. Nothing fully resets.",
+   "When the extra hours do not cost sleep, 8->10 and 10->12 are clearly positive in every framework (+260 to +510 RHE per year). The block contribution of the added hours is 0.7-0.8 A per nominal hour, and the spillover is modest (-40 to -220 RHE).",
+   "When the extra hours must come out of sleep (S3, and every sleep-cut prompt-2 variant), the net is negative for 12->14, and even for 10->12 under the generous budget. The sleep channel is the largest spillover component in every such case.",
+   "Under prompt-2 base conditions 14 h/day is infeasible by 2.9 h. The sleep-cut version (5.3 h sleep) yields less annual RHE (2838) than feasible 10 h (2912).",
+   "Within the model, Q3 optima sit on the binding constraint: the most hours that the budget and leisure floor allow, with the minimum number of rest days. Each 30 min of leisure floor costs about 4% of annual RHE, and weekly rather than biweekly rest costs about 6.5%.",
+   "Task allocation changes the shape of the hourly curve far more than the day's total: the hill-climbed order gains +1.7-2.0% annual RHE while moving individual hours by up to ±25 R points. R curves under non-uniform allocation depend on what hour 1 contains, so use A to compare allocations."
+  ],
+  "fragile_conclusions": [
+   "The exact hour at which R first falls to <=80. Base is h13 (sustained) for S1/S2 and h12 for S3. Across single-assumption settings it ranges h7-h14 and often jumps to the transient h9 dip, because h9 sits at R=81. It depends most on content saturation and stream switching, then on mind-wandering slope, encoding capacity, drift onset and warm-up.",
+   "The sign of the 12->14 lifestyle increment under prompt-1. S1 is +33 and flips in 12 of 67 settings. S2 is -91, positive only with a fast debt leak (0.35) or weak sleep impairment (a_sleep 0.12). S3 is negative in every single-assumption setting. The sign depends on how much learning per hour is lost per hour of chronic sleep debt, how quickly debt equilibrates, how much leisure matters for recovery, and the strength of the multi-week strain channel. None of these is pinned down by direct evidence.",
+   "That one full rest day per 14 beats two. The model credits rest days only through strain recovery and sleep catch-up; it gives them no spacing or consolidation benefit and no tail risk such as illness or dropout.",
+   "That optimal daily hours equal the feasibility limit (11.0 h base). This holds for every declared parameter range, but the optimum moves to 10-10.5 h if strain is 3-6x stronger. If Pencavel's munitions-work concavity (peak ~63 h/week, about 9.7 h/day in a 13+1 cycle) transferred to study, the optimum would sit near 10 h.",
+   "Absolute A levels (e.g. S2 first-hour A of 80) depend on a_sleep, f_max and the consolidation parameters. A 5-point band either way is plausible.",
+   "The positive 12->14 net for the 'drop exercise+meditation' variant under the tight budget (+153). It exists only because the model gives exercise no direct cognitive, sleep-quality or health benefit beyond a small strain-recovery term.",
+   "The specific optimized task order (NEW after each break, MOCK late in the evening). It is driven by assumed task parameters and ignores the value of practising timed mocks at real CSAT clock times."
+  ],
+  "self_critique": "Every within-day shape parameter is an assumption anchored only to indirect evidence: lab mind-wandering, school-day test scores, Blain's effort-choice data, and a small study of encoding capacity. Nothing measures durable learning per hour at 10-14 h/day, so the R tables are structured guesses. What should be trusted is their decomposition, not their decimals.\n\nThe multiplicative structure treats channels as independent. Saturation, encoding capacity and drift may double-count one underlying phenomenon, or miss interactions such as sleep debt accelerating drift.\n\nThe multi-week strain variable stands in for motivation and burnout, and its magnitude is almost unconstrained. It is the main driver of the rest-day and optimal-hours conclusions, and the base setting is probably on the mild side. The strain stress tests show the optimum moves only when strain is 3-6x stronger.\n\nRest days and leisure affect only strain and sleep here. Spacing and consolidation benefits of rest, affective and health effects, and tail risks (illness, dropout) are omitted, which biases the model toward fewer rest days and more hours. Exercise and meditation get no direct cognitive or sleep-quality benefit, which biases the prompt-1 vs prompt-2 comparison in favour of dropping them.\n\nThe sleep-debt to learning mapping is one saturating exponential calibrated by eye to Lowe 2017 and Newbury 2021 effect sizes via an assumed CV of 0.3. The 3.5-5.3 h sleep-cut variants lie outside its calibrated range.\n\nThe 7-day delayed test in the definition of Q flatters massed same-day practice relative to a CSAT months away, so the saturation penalty is probably understated.\n\nKnowledge-level diminishing returns are excluded by design. The model is deterministic and has no between-person variation (chronotype, sleep need) beyond the sensitivity ranges.\n\nSeveral parameters were declared with ranges but not run: ext_frac, D0, tau_dip, irr_sd, irr_tshift, warm_meal, enc_scale, mu_exmed, adapt_tau, and per-type v/e0/demand/susc.\n\nThe day layout (blocks of 4/5/rest hours, extra hours appended in the evening, leisure in the evening) is fixed, and it determines where the transient dips fall. The allocation hill-climb is local, run at a single month-3 state, and applied unchanged all year.\n\nThe R_low/R_high bands are one-at-a-time envelopes, which understate joint uncertainty. The stacked corners are reported separately as stress tests, not as intervals. None of the ranges are confidence intervals."
+ },
+ "M1_physiology": {
+  "model_name": "M1_physiology: two-process (homeostat + circadian threshold) with converging sleep debt, time-on-task, effort drift and slow load fatigue; multiplicative, simulated day by day",
+  "code_path": "model/independent/M1_physiology.py",
+  "structure_summary": "This is a physiology-first multiplicative model. It simulates 365 days one at a time, in 15-minute steps inside study blocks. Each nominal hour's learning is Q = e(h) x eta(h): e is the engaged share of the nominal hour and eta is the value of each engaged minute.\n\nPhysiological state:\n(1) Homeostatic pressure S (Borbely type): it rises with time awake (tau 18.2 h) and decays during sleep (tau 4.2 h).\n(2) A circadian wake-maintenance threshold Theta(clock), anchored to a fixed 02:45 sleep midpoint. It is calibrated so a well-slept person is unimpaired until about 16 h awake. Impairment grows only once S (plus a debt shift) exceeds Theta.\n(3) A transient post-lunch dip centred at 14:30.\n(4) Sleep inertia.\n(5) Chronic effective sleep debt I (h): a leaky integrator of nightly deficit against a need of 8.3 h, with a 4-day time constant. Moderate restriction therefore reaches an equilibrium (S1 about 2.8 h, S2 about 5.5 h, S3 about 8.7 h) instead of growing linearly. Debt lowers all-day learning (about 0.9% per hour of debt), moves the evening decline earlier, and amplifies time-on-task fatigue and the dip. Rest days allow only partial rebound sleep, so one rest day does not reset the debt.\n\nWithin-day non-sleep drivers:\n- Time-on-task fatigue F inside blocks: ceiling about 8%; meal breaks recover 60-75% of it; about 20% less after weeks of practice.\n- Day-level drift into low-effort methods after about 7 study hours (Blain/Wiehler).\n- Mild saturation on the same content within a block.\n- A warm-up at the start of each block, so hour 2 can exceed 100.\n\nAcross days: a slow load fatigue B (time constant weeks) builds when study exceeds 6 h/day. Leisure and exercise reduce how fast it builds; one rest day removes 30% of it. Consolidation of the day's learning is slightly reduced by the following night's deficit.\n\nThe rested twin has the same schedule, clock and time since waking, with no debt, no B and a well-slept S. Its first hour defines Q_ref. R and A are averaged over the study days of each timepoint cycle.\n\nQ2 and Q3 reuse the same engine with schedules built from the digest time budgets (every 24 h budget is checked). Annual RHE is the sum of A/100 over all study hours.\n\nSensitivity:\n- One-at-a-time runs on every parameter.\n- A 240-set Latin hypercube over the whole parameter box, log-uniform for time constants and scale factors. The reported bands are the 10th-90th percentiles of these sets. They are not confidence intervals.\n- Structural scans of the slow-fatigue strength and of the starting scenario.",
+  "equations": "Units: t = day, h = nominal-hour index, tau = hours since waking, clock in h. Q in learning units per nominal hour.\n\nPer step:\n- Q(t,h) = sum over the hour of e*eta*dt\n- e = e0 * warm * (1 - F) * m_B * sqrt(phys)\n- eta = sqrt(phys) * T(G) * (1 - zeta*tau_blk) * m_cons\n- phys = m_thr * (1 - dip) * (1 - inertia) * (1 - beta_I*I) * (1 - irr)\n\nHomeostat:\n- Awake: dS/dtau = (1 - S)/tau_r\n- Asleep: S <- S*exp(-s/tau_d)\n- Nap: S <- S*exp(-0.8*dur/tau_d)\n\nCircadian threshold:\n- Theta(clock) = Theta0 + a_c*cos(2*pi*(clock - 20.75)/24)\n- Theta0 is set so that, for a well-slept, entrained person (sleep = need, midpoint 02:45), S(tau_crit = 16 h) = Theta.\n- m_thr = 1 - gamma_S * w*ln(1 + exp((S + kappa_I*I - Theta)/w)), with w = 0.015.\n- Check: a rested person is flat to 16 h awake, loses about 5% at 18 h and 11% at 20 h. The morning after an all-nighter loses about 31% in total.\n\nTransient terms:\n- dip = d_pl*(1 + debt_amp*I)*exp(-0.5*((clock - 14.5)/1)^2)\n- inertia = w0*exp(-tau/0.5)\n\nTime-on-task:\n- During study: dF/dtau = (Fmax* - F)/tau_F\n- Fmax* = F_max*(1 - adapt*(1 - exp(-t/21)))*(1 + debt_amp*I)\n- During any break: F <- F*exp(-dur/tau_Frec)\n\nEffort drift:\n- T = 1 - p_max/(1 + exp(-(G - G50)/1))*(1 - v_low), where G = study hours so far today.\n\nWarm-up: the first warm_min minutes of each block count at 50%.\n\nSleep debt (h, daily):\n- I_t = max(0, I_(t-1)*exp(-1/tau_I) + need - s_t)\n- Equilibrium is about 4.5 x the nightly deficit.\n- Night before a rest day: s = max(s_norm, min((TIB + sleepin)*SE, need + rho_reb*I)).\n\nConsolidation: m_cons = 1 - c_cons*max(0, need - s_(t+1))/need\n\nSlow fatigue (fraction):\n- Study day: B <- B*exp(-1/tau_B) + alpha_B*max(0, H - H0)*(1 - lambda_L*min(1, rec/2 h)), with rec = leisure + omega_ex*(exercise + meditation)\n- Rest day: B <- B*exp(-1/tau_B)*(1 - phi_rest)\n- Half-day: phi_rest/2\n- m_B = 1 - B\n\nRested twin, Q_ref(t): first hour only, same segments and clock, S_wake = rested steady state, I = B = irr = 0, m_cons = 1.\n\nOutputs:\n- R(t,h) = 100*Q(t,h)/Q(t,1)\n- A(t,h) = 100*Q(t,h)/Q_ref(t)\n- Both are averaged over the study days of the cycle(s) for each timepoint.\n- Annual RHE = sum over study days and hours of A/100 (a fractional hour is weighted by its duration).\n- Nominal hours = 339*H (26 cycles x 13 study days, plus day 365).\n\nIncrement H1 -> H2:\n- block = sum over days of the hours h > H1 of A_H2/100\n- spillover = sum over days of the hours h <= H1 of (A_H2 - A_H1)/100\n- net = block + spillover\n\nBudget: study + TIB + life + leisure = 24 h (asserted for every schedule).",
+  "parameters": [
+   {
+    "name": "need (sleep need, actual)",
+    "value": "8.3 h",
+    "sensitivity_range": "7.9-8.9 h",
+    "label": "literature_constrained",
+    "basis": "Digest s1: Van Dongen 2003 implied 8.16 h [S]; Kitamura 2016 8.4 h (individual 7.3-9.3) [S]; Klerman&Dijk asymptote 8.9 h"
+   },
+   {
+    "name": "tau_I (sleep-debt time constant)",
+    "value": "4 days",
+    "sensitivity_range": "2.5-10 days (log-uniform)",
+    "label": "indirect_estimate",
+    "basis": "Kitamura 2016 ~4 days to repay 1 h debt [S]; Belenky 2003 7 h TIB stabilised after ~4 d [M]; upper end mimics Van Dongen 6 h TIB declines continuing over 14 d [S]; convergence per McCauley 2009 [S,B]"
+   },
+   {
+    "name": "beta_I (learning loss per h of effective debt)",
+    "value": "0.9 %/h",
+    "sensitivity_range": "0.4-1.8 %/h (log-uniform)",
+    "label": "indirect_estimate",
+    "basis": "Lowe 2017 restriction: LTM g=-0.19, executive -0.32, attention -0.41 [S,I]; composite g~-0.25 x assumed outcome CV 0.4 => ~10% at a typical restriction-study effective debt of ~10 h. Mapping g->fraction is an assumption"
+   },
+   {
+    "name": "kappa_I (debt added to homeostatic pressure)",
+    "value": "0.006 S-units per h debt (6 h debt moves the 16 h crossing ~1.5 h earlier)",
+    "sensitivity_range": "0-0.012",
+    "label": "assumption",
+    "basis": "Allostatic/elevated-pressure idea in McCauley 2009 [S,B]; Van Dongen critical wake 15.84 h [S]"
+   },
+   {
+    "name": "rho_reb (rebound-sleep capacity)",
+    "value": "sleep-in night <= need + 0.3*I",
+    "sensitivity_range": "0.15-0.5",
+    "label": "assumption",
+    "basis": "Recovery incomplete after 2-3 nights (Belenky 2003, Lo 2016/2017 [M]); Kitamura slow repayment [S]"
+   },
+   {
+    "name": "sleepin (extra TIB before a full rest day)",
+    "value": "1.5 h",
+    "sensitivity_range": "0.5-2.5 h",
+    "label": "assumption",
+    "basis": "Behavioural assumption; rest-day recovery partial"
+   },
+   {
+    "name": "tau_r (Process S rise)",
+    "value": "18.2 h",
+    "sensitivity_range": "15-22 h",
+    "label": "indirect_estimate",
+    "basis": "Standard two-process value (Daan/Borbely 1984) recalled from memory, not in digest; shape consistent with Dijk/Czeisler [M,B]"
+   },
+   {
+    "name": "tau_d (Process S sleep decay)",
+    "value": "4.2 h",
+    "sensitivity_range": "3-5 h",
+    "label": "indirect_estimate",
+    "basis": "Standard two-process value, from memory, not in digest"
+   },
+   {
+    "name": "tau_crit (wake duration at which rested alertness starts to fall)",
+    "value": "16 h",
+    "sensitivity_range": "15-17 h",
+    "label": "literature_constrained",
+    "basis": "Dijk 1992, Dijk&Czeisler 1994, Wright 2002 [M,B]: stable ~16 h; Van Dongen critical wake 15.84+/-0.73 h [S]"
+   },
+   {
+    "name": "a_c (circadian threshold amplitude)",
+    "value": "0.12 S-units, peak 20:45 (6 h before sleep midpoint)",
+    "sensitivity_range": "0.08-0.16",
+    "label": "assumption",
+    "basis": "Wake-maintenance zone before habitual sleep (digest s2 [M,B]); amplitude assumed"
+   },
+   {
+    "name": "gamma_S (loss per S-unit above threshold)",
+    "value": "0.6",
+    "sensitivity_range": "0.35-1.2 (log-uniform)",
+    "label": "indirect_estimate",
+    "basis": "Calibrated so the morning after an all-nighter loses ~31% (Newbury 2021 deprivation before learning g=0.62 [S,I] x outcome CV 0.4-0.6 => 25-37%)"
+   },
+   {
+    "name": "d_pl (post-lunch dip depth)",
+    "value": "5% at 14:30, sd 1 h, x(1+0.1*I)",
+    "sensitivity_range": "0-10%",
+    "label": "assumption",
+    "basis": "Variable post-lunch dip (Monk 2005 [M,B]); break effects Sievertsen 2016 [S,I]"
+   },
+   {
+    "name": "debt_amp (debt amplifies ToT and dip)",
+    "value": "0.10 per h of debt",
+    "sensitivity_range": "0-0.2",
+    "label": "assumption",
+    "basis": "Sleep loss unmasks time-on-task effects; not in digest"
+   },
+   {
+    "name": "w0 (sleep inertia)",
+    "value": "15% at waking, tau 0.5 h (~2-3% left in hour 1)",
+    "sensitivity_range": "5-30% (log-uniform)",
+    "label": "assumption",
+    "basis": "Not in digest; small effect"
+   },
+   {
+    "name": "F_max (within-block time-on-task ceiling)",
+    "value": "8%",
+    "sensitivity_range": "3-16% (log-uniform)",
+    "label": "indirect_estimate",
+    "basis": "Ackerman 2009/2010: no objective decline in 3.5-5.5 h batteries for motivated students [M,D]; Sievertsen -0.9% SD per school hour [S,I]; Hopstaken 2015 decline reversible [M,I]; ego depletion d~0.05 [S]"
+   },
+   {
+    "name": "tau_F (ToT build-up)",
+    "value": "2.5 h",
+    "sensitivity_range": "1.5-4 h",
+    "label": "assumption",
+    "basis": "Shape assumption"
+   },
+   {
+    "name": "tau_Frec (ToT recovery during breaks)",
+    "value": "0.5 h (37-min meal break removes ~70%)",
+    "sensitivity_range": "0.25-1 h",
+    "label": "indirect_estimate",
+    "basis": "Sievertsen 2016: 20-30 min break +1.7% SD roughly offsets ~2 h of decline [S,I]; Albulescu 2022 longer breaks better [S,I]"
+   },
+   {
+    "name": "adapt (endurance training)",
+    "value": "-20% ToT ceiling, tau 21 d",
+    "sensitivity_range": "0-30%",
+    "label": "indirect_estimate",
+    "basis": "Brown et al. 2025 QJE: 22% less within-test decline after practice [S,I]"
+   },
+   {
+    "name": "p_max (max share of late-day time in low-effort methods)",
+    "value": "0.40",
+    "sensitivity_range": "0.15-0.6",
+    "label": "assumption",
+    "basis": "Blain 2016, Wiehler 2022: low-effort choice after ~6-6.25 h of hard control [S/M,I]; untested for studying"
+   },
+   {
+    "name": "G50 (study hours at half drift)",
+    "value": "7 h",
+    "sensitivity_range": "5.5-9 h",
+    "label": "indirect_estimate",
+    "basis": "~6 h engaged (Blain/Wiehler) / e0 0.85"
+   },
+   {
+    "name": "v_low (value of drifted low-effort study)",
+    "value": "0.70",
+    "sensitivity_range": "0.55-0.85",
+    "label": "indirect_estimate",
+    "basis": "Roediger&Karpicke 2006: 40% vs 61% 1-week recall (restudy vs testing) [S]; retrieval g=0.50 (Rowland 2014) [S]; planned light review raises it"
+   },
+   {
+    "name": "zeta (same-content saturation within block)",
+    "value": "1% per hour into block (subject rotation)",
+    "sensitivity_range": "0-4% (high = one subject per 5 h block)",
+    "label": "assumption",
+    "basis": "Rohrer&Taylor 2006: 9 vs 3 problems no gain [S,D]; overlearning fades (Rohrer 2005) [M]"
+   },
+   {
+    "name": "warm_min (settling-in at block start)",
+    "value": "8 min at 50% (hour 1 = 0.93)",
+    "sensitivity_range": "0-15 min",
+    "label": "assumption",
+    "basis": "Allows hour 2 > 100; no direct evidence"
+   },
+   {
+    "name": "e0 (engaged share of rested nominal hour)",
+    "value": "0.85",
+    "sensitivity_range": "0.75-0.92 (cancels in R and A)",
+    "label": "assumption",
+    "basis": "Mind-wandering 19-41% in lab lectures, low in motivated classes (Szpunar 2013 [S], Wammes 2016 [M])"
+   },
+   {
+    "name": "alpha_B (slow load-fatigue build-up)",
+    "value": "0.0010 per h above H0 per day (B ~8% mid-cycle at 14 h/day, 13+1, no leisure)",
+    "sensitivity_range": "0-0.0025; structural scan 1-20x",
+    "label": "assumption",
+    "basis": "Weak anchors: Pencavel 2015 output flattens above ~49 h/wk, manual work [S,I]; call-centre less-than-proportional output [M]; burnout-achievement r=-0.24 (correlational) [S]"
+   },
+   {
+    "name": "H0 (daily hours with no slow-fatigue build-up)",
+    "value": "6 h",
+    "sensitivity_range": "4-8 h",
+    "label": "assumption",
+    "basis": "Ericsson ~4 h/day descriptive [S]; Pencavel proportional below ~49 h/wk [S,I]"
+   },
+   {
+    "name": "tau_B (slow-fatigue decay)",
+    "value": "14 days",
+    "sensitivity_range": "7-45 days (log-uniform)",
+    "label": "assumption",
+    "basis": "Vacation effects fade in 1-4 weeks (de Bloom 2009, Speth 2024) [S]"
+   },
+   {
+    "name": "phi_rest (share of B removed by one full rest day; half-day = half)",
+    "value": "0.30",
+    "sensitivity_range": "0.15-0.5",
+    "label": "indirect_estimate",
+    "basis": "Binnewies 2010 weekend recovery predicts next week [M]; vacation d=0.25-0.43 but short-lived [S]"
+   },
+   {
+    "name": "lambda_L (max reduction of B build-up by leisure, saturating at 2 h)",
+    "value": "0.40",
+    "sensitivity_range": "0-0.7",
+    "label": "assumption",
+    "basis": "Recovery/detachment literature only in outline (Binnewies [M]); no direct estimate"
+   },
+   {
+    "name": "omega_ex (exercise+meditation count as leisure for recovery)",
+    "value": "0.5",
+    "sensitivity_range": "0-1",
+    "label": "assumption",
+    "basis": "No direct evidence in digest; the model has no other exercise-to-learning pathway"
+   },
+   {
+    "name": "c_cons (consolidation loss from the next night's deficit)",
+    "value": "11% x deficit/need (S2: ~1.7%)",
+    "sensitivity_range": "0-20%",
+    "label": "indirect_estimate",
+    "basis": "Newbury 2021 deprivation after learning g=0.28 [S,I] x CV 0.4; Berres&Erdfelder 2021 sleep-after-learning g=0.44 [S,I]"
+   },
+   {
+    "name": "irr (S3 irregular timing penalty)",
+    "value": "3%",
+    "sensitivity_range": "0-6%",
+    "label": "assumption",
+    "basis": "Digest S3 definition; circadian misalignment size not in digest"
+   },
+   {
+    "name": "Fixed structure: sleep midpoint 02:45, dip centre 14:30, drift width 1 h, leisure saturation 2 h, adaptation tau 21 d, start of year rested (I=B=0)",
+    "value": "as stated",
+    "sensitivity_range": "not varied",
+    "label": "assumption",
+    "basis": "Schedule/structural choices. A late chronotype (Roenneberg 2004 [S]) would shift the circadian phase later; not modelled"
+   },
+   {
+    "name": "Time budgets (S1/S2/S3 life, TIB, actual sleep; prompt-2 tight/base/generous items and sleep efficiency)",
+    "value": "S1 1.75/8.25/7.6 h; S2 2.5/7.5/7.0; S3 3.0/7.0/6.3; prompt-2 life 2.93/4.30/6.11 h, SE 0.95/0.93/0.90",
+    "sensitivity_range": "S1 and S3 used as alternative prompt-1 starting points",
+    "label": "assumption",
+    "basis": "Digest s1 and repo model/time_budget.py (imported directly)"
+   }
+  ],
+  "hourly_tables": [
+   {
+    "scenario": "S1",
+    "timepoint": "wk1-2",
+    "R": [
+     100,
+     105,
+     105,
+     100,
+     100,
+     100,
+     90,
+     90,
+     85,
+     90,
+     90,
+     90,
+     90,
+     85
+    ],
+    "R_low": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     80,
+     75,
+     75,
+     85,
+     80,
+     80,
+     75,
+     70
+    ],
+    "R_high": [
+     100,
+     110,
+     110,
+     105,
+     100,
+     105,
+     100,
+     95,
+     95,
+     95,
+     100,
+     95,
+     95,
+     90
+    ],
+    "A": [
+     95,
+     100,
+     95,
+     95,
+     90,
+     90,
+     85,
+     80,
+     80,
+     80,
+     85,
+     85,
+     80,
+     80
+    ],
+    "first_hour_A": 95,
+    "daily_RHE": 12.2
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "1m",
+    "R": [
+     100,
+     105,
+     105,
+     100,
+     100,
+     100,
+     90,
+     90,
+     90,
+     90,
+     90,
+     90,
+     90,
+     85
+    ],
+    "R_low": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     80,
+     75,
+     75,
+     80,
+     80,
+     80,
+     75,
+     70
+    ],
+    "R_high": [
+     100,
+     110,
+     110,
+     105,
+     100,
+     105,
+     100,
+     95,
+     95,
+     95,
+     100,
+     95,
+     95,
+     90
+    ],
+    "A": [
+     90,
+     95,
+     90,
+     90,
+     90,
+     90,
+     80,
+     80,
+     80,
+     80,
+     80,
+     80,
+     80,
+     75
+    ],
+    "first_hour_A": 90,
+    "daily_RHE": 11.8
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "3m",
+    "R": [
+     100,
+     105,
+     105,
+     100,
+     100,
+     100,
+     90,
+     90,
+     90,
+     90,
+     90,
+     90,
+     90,
+     85
+    ],
+    "R_low": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     80,
+     75,
+     75,
+     85,
+     80,
+     80,
+     75,
+     70
+    ],
+    "R_high": [
+     100,
+     110,
+     110,
+     105,
+     100,
+     105,
+     100,
+     95,
+     95,
+     95,
+     100,
+     95,
+     95,
+     90
+    ],
+    "A": [
+     90,
+     95,
+     90,
+     90,
+     85,
+     90,
+     80,
+     80,
+     80,
+     80,
+     80,
+     80,
+     80,
+     75
+    ],
+    "first_hour_A": 90,
+    "daily_RHE": 11.7
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "6m",
+    "R": [
+     100,
+     105,
+     105,
+     100,
+     100,
+     100,
+     90,
+     90,
+     90,
+     90,
+     90,
+     90,
+     90,
+     85
+    ],
+    "R_low": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     80,
+     75,
+     75,
+     85,
+     80,
+     80,
+     75,
+     70
+    ],
+    "R_high": [
+     100,
+     110,
+     110,
+     105,
+     100,
+     105,
+     100,
+     95,
+     95,
+     95,
+     100,
+     95,
+     95,
+     90
+    ],
+    "A": [
+     90,
+     95,
+     90,
+     90,
+     85,
+     90,
+     80,
+     80,
+     80,
+     80,
+     80,
+     80,
+     80,
+     75
+    ],
+    "first_hour_A": 90,
+    "daily_RHE": 11.7
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "12m",
+    "R": [
+     100,
+     105,
+     105,
+     100,
+     100,
+     100,
+     90,
+     90,
+     90,
+     90,
+     90,
+     90,
+     90,
+     85
+    ],
+    "R_low": [
+     100,
+     100,
+     95,
+     90,
+     95,
+     90,
+     80,
+     75,
+     75,
+     85,
+     80,
+     80,
+     75,
+     70
+    ],
+    "R_high": [
+     100,
+     110,
+     110,
+     105,
+     100,
+     105,
+     100,
+     95,
+     95,
+     95,
+     100,
+     95,
+     95,
+     90
+    ],
+    "A": [
+     90,
+     95,
+     90,
+     90,
+     85,
+     90,
+     80,
+     80,
+     80,
+     80,
+     80,
+     80,
+     80,
+     75
+    ],
+    "first_hour_A": 90,
+    "daily_RHE": 11.7
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "wk1-2",
+    "R": [
+     100,
+     105,
+     100,
+     100,
+     95,
+     95,
+     90,
+     85,
+     85,
+     90,
+     90,
+     90,
+     85,
+     85
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     95,
+     90,
+     80,
+     75,
+     75,
+     85,
+     80,
+     75,
+     75,
+     70
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     100,
+     105,
+     95,
+     95,
+     95,
+     95,
+     100,
+     95,
+     90,
+     90
+    ],
+    "A": [
+     90,
+     95,
+     90,
+     90,
+     90,
+     90,
+     80,
+     80,
+     80,
+     80,
+     80,
+     80,
+     80,
+     75
+    ],
+    "first_hour_A": 90,
+    "daily_RHE": 11.7
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "1m",
+    "R": [
+     100,
+     105,
+     100,
+     100,
+     95,
+     95,
+     90,
+     85,
+     85,
+     90,
+     90,
+     90,
+     85,
+     85
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     95,
+     85,
+     75,
+     75,
+     70,
+     80,
+     80,
+     75,
+     70,
+     70
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     100,
+     100,
+     95,
+     90,
+     90,
+     95,
+     100,
+     95,
+     90,
+     90
+    ],
+    "A": [
+     85,
+     90,
+     85,
+     85,
+     85,
+     85,
+     75,
+     75,
+     75,
+     75,
+     80,
+     75,
+     75,
+     70
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 11.2
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "3m",
+    "R": [
+     100,
+     105,
+     100,
+     100,
+     100,
+     95,
+     90,
+     85,
+     85,
+     90,
+     90,
+     90,
+     85,
+     85
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     95,
+     85,
+     75,
+     75,
+     70,
+     80,
+     80,
+     75,
+     70,
+     70
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     100,
+     100,
+     95,
+     90,
+     95,
+     95,
+     100,
+     95,
+     90,
+     90
+    ],
+    "A": [
+     85,
+     90,
+     85,
+     85,
+     85,
+     85,
+     75,
+     75,
+     75,
+     75,
+     80,
+     75,
+     75,
+     70
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 11.1
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "6m",
+    "R": [
+     100,
+     105,
+     100,
+     100,
+     100,
+     95,
+     90,
+     85,
+     85,
+     90,
+     90,
+     90,
+     85,
+     85
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     95,
+     85,
+     75,
+     75,
+     70,
+     80,
+     80,
+     75,
+     70,
+     70
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     100,
+     100,
+     95,
+     90,
+     95,
+     95,
+     100,
+     95,
+     90,
+     90
+    ],
+    "A": [
+     85,
+     90,
+     85,
+     85,
+     85,
+     85,
+     75,
+     75,
+     75,
+     75,
+     80,
+     75,
+     75,
+     70
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 11.1
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "12m",
+    "R": [
+     100,
+     105,
+     100,
+     100,
+     100,
+     95,
+     90,
+     85,
+     85,
+     90,
+     90,
+     90,
+     85,
+     85
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     95,
+     85,
+     75,
+     75,
+     70,
+     80,
+     80,
+     75,
+     70,
+     70
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     100,
+     100,
+     95,
+     90,
+     95,
+     95,
+     100,
+     95,
+     90,
+     90
+    ],
+    "A": [
+     85,
+     90,
+     85,
+     85,
+     85,
+     85,
+     75,
+     75,
+     75,
+     75,
+     80,
+     75,
+     75,
+     70
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 11.1
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "wk1-2",
+    "R": [
+     100,
+     105,
+     100,
+     95,
+     95,
+     95,
+     85,
+     85,
+     85,
+     90,
+     90,
+     85,
+     85,
+     80
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     85,
+     90,
+     85,
+     75,
+     70,
+     70,
+     80,
+     80,
+     75,
+     70,
+     65
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     100,
+     100,
+     100,
+     95,
+     90,
+     90,
+     95,
+     95,
+     95,
+     90,
+     85
+    ],
+    "A": [
+     85,
+     90,
+     85,
+     80,
+     80,
+     80,
+     75,
+     70,
+     70,
+     75,
+     75,
+     75,
+     70,
+     70
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 10.8
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "1m",
+    "R": [
+     100,
+     105,
+     100,
+     95,
+     95,
+     95,
+     85,
+     85,
+     85,
+     85,
+     90,
+     85,
+     85,
+     80
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     80,
+     90,
+     80,
+     65,
+     65,
+     65,
+     80,
+     75,
+     70,
+     65,
+     65
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     100,
+     100,
+     100,
+     95,
+     90,
+     90,
+     95,
+     95,
+     90,
+     90,
+     85
+    ],
+    "A": [
+     80,
+     85,
+     80,
+     75,
+     75,
+     75,
+     70,
+     65,
+     65,
+     70,
+     70,
+     70,
+     65,
+     65
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 10.1
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "3m",
+    "R": [
+     100,
+     105,
+     100,
+     95,
+     95,
+     95,
+     85,
+     85,
+     85,
+     90,
+     90,
+     85,
+     85,
+     80
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     80,
+     90,
+     80,
+     65,
+     65,
+     65,
+     80,
+     75,
+     70,
+     65,
+     65
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     100,
+     100,
+     100,
+     95,
+     90,
+     90,
+     95,
+     95,
+     90,
+     90,
+     85
+    ],
+    "A": [
+     80,
+     80,
+     80,
+     75,
+     75,
+     75,
+     70,
+     65,
+     65,
+     70,
+     70,
+     70,
+     65,
+     65
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 10.1
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "6m",
+    "R": [
+     100,
+     105,
+     100,
+     95,
+     95,
+     95,
+     85,
+     85,
+     85,
+     90,
+     90,
+     85,
+     85,
+     80
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     80,
+     90,
+     80,
+     65,
+     65,
+     65,
+     80,
+     75,
+     70,
+     70,
+     65
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     100,
+     100,
+     100,
+     95,
+     90,
+     90,
+     95,
+     95,
+     90,
+     90,
+     85
+    ],
+    "A": [
+     80,
+     80,
+     80,
+     75,
+     75,
+     75,
+     70,
+     65,
+     65,
+     70,
+     70,
+     70,
+     65,
+     65
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 10.1
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "12m",
+    "R": [
+     100,
+     105,
+     100,
+     95,
+     95,
+     95,
+     85,
+     85,
+     85,
+     90,
+     90,
+     85,
+     85,
+     80
+    ],
+    "R_low": [
+     100,
+     95,
+     90,
+     80,
+     90,
+     80,
+     65,
+     65,
+     65,
+     80,
+     75,
+     70,
+     70,
+     65
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     100,
+     100,
+     100,
+     95,
+     90,
+     90,
+     95,
+     95,
+     90,
+     90,
+     85
+    ],
+    "A": [
+     80,
+     80,
+     80,
+     75,
+     75,
+     75,
+     70,
+     65,
+     65,
+     70,
+     70,
+     70,
+     65,
+     65
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 10.1
+   }
+  ],
+  "thresholds": [
+   {
+    "scenario": "S1",
+    "timepoint": "wk1-2",
+    "first_hour_R_le_80": "Not reached within 14 h in the base run; the lowest R is about 86 at h14. Sensitivity (sampled parameter sets): at the 10th percentile, R stays at or below 80 from h12 onward; the median set does not reach 80; 37% of sets reach it by h14.",
+    "first_hour_R_le_50": "Not reached within 14 h (0% of sampled parameter sets).",
+    "note": "Hours 7-9 (about 14:00-17:00) are a transient post-lunch trough (R about 87-90): dip plus time-on-task. It recovers to about 90 after the dinner break (h10-11). The sustained part is the slide from h11 to h14 (effort drift, time-on-task, content saturation). Wake 06:53, study 07:25-22:10."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "1m",
+    "first_hour_R_le_80": "Not reached in the base run (lowest R about 86 at h14). Sampled-set band: 10th percentile h12, median not reached; 40% of sets reach it by h14.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Same shape as weeks 1-2. R hardly changes after debt and slow fatigue settle (about 3-4 weeks)."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "3m",
+    "first_hour_R_le_80": "Not reached in the base run (lowest R about 87 at h14). Sampled-set band: 10th percentile h12, median not reached; 38% of sets reach it by h14.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Equilibrium: effective debt about 2.8 h, slow fatigue about 8%. Transient trough at h7-9 (about 88)."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "6m",
+    "first_hour_R_le_80": "Not reached in the base run (lowest R about 87 at h14). Sampled-set band: 10th percentile h12, median not reached; 38% of sets.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Identical to 3 months. The model has no month-scale trend, because the evidence does not support one."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "12m",
+    "first_hour_R_le_80": "Not reached in the base run (lowest R about 87 at h14). Sampled-set band: 10th percentile h12, median not reached; 38% of sets.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Identical to 3 months."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "wk1-2",
+    "first_hour_R_le_80": "Not reached in the base run (lowest R about 84 at h14). Sampled-set band: 10th percentile h12, median h14, 90th percentile not reached; 51% of sets reach it by h14.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Transient post-lunch trough at h7-9 (R about 86-89) recovers to about 91 at h11 after dinner. The sustained decline starts about h11. Wake 06:30, study 07:15-22:30 (16 h awake at the end); the circadian/homeostatic threshold costs only about 2% at h14."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "1m",
+    "first_hour_R_le_80": "Not reached in the base run (lowest R about 83.5 at h14). Sampled-set band: h12 / h14 / not reached; 57% of sets reach it by h14.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Debt close to its equilibrium of about 5.5 h. Debt amplifies time-on-task and the dip, but hour 1 is lowered too, so R changes by only about 1 point."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "3m",
+    "first_hour_R_le_80": "Not reached in the base run (lowest R about 84 at h14). Sampled-set band: h12 / h14 / not reached; 55% of sets reach it by h14.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "At h14, relative to h1: warm-up in h1 +7%, time-on-task -7%, effort drift -12%, content saturation -4%, circadian/homeostatic threshold -2%."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "6m",
+    "first_hour_R_le_80": "Not reached in the base run (lowest R about 84 at h14). Sampled-set band: h12 / h14 / not reached; 55% of sets.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Same as 3 months."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "12m",
+    "first_hour_R_le_80": "Not reached in the base run (lowest R about 84 at h14). Sampled-set band: h12 / h14 / not reached; 55% of sets.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Same as 3 months."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "wk1-2",
+    "first_hour_R_le_80": "Not reached in the base run (R about 81 at h14). Sampled-set band: h11 / h14 / not reached; 69% of sets reach it by h14.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "The post-lunch trough at h7-9 is deeper (about 84) because debt amplifies the dip. It recovers to about 90 at h11."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "1m",
+    "first_hour_R_le_80": "Borderline in the base run: R is just above 80 at h14. Sampled-set band: h11 / h13 / not reached; 74% of sets reach it by h14.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Effective debt about 8.7 h. The evening threshold begins at about h11-12 (-4% at h14)."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "3m",
+    "first_hour_R_le_80": "Not reached in the base run (R about 80.5 at h14, borderline). Sampled-set band: h10 / h13 / not reached; 74% of sets reach it by h14.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "In the pessimistic tail, the post-lunch trough alone can go below 80 transiently (R_low about 65 at h7-9, recovering to about 80 at h10)."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "6m",
+    "first_hour_R_le_80": "Borderline (about 80.5 at h14). Sampled-set band: h10 / h13 / not reached; 74% of sets.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Same as 3 months."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "12m",
+    "first_hour_R_le_80": "Borderline (about 80.5 at h14). Sampled-set band: h10 / h13 / not reached; 74% of sets.",
+    "first_hour_R_le_50": "Not reached (0% of sampled sets).",
+    "note": "Same as 3 months."
+   }
+  ],
+  "schedule_comparison": [
+   {
+    "framework": "prompt1",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8.3,
+    "leisure_h": 4.61,
+    "annual_RHE": 2651,
+    "annual_nominal_hours": 2712,
+    "note": "Reallocation from S2 (life 2.5 h, SE 0.933): the 6 h freed goes first to sleep, TIB 7.5 -> 8.89 h (actual 7.0 -> 8.3 = need), and the remaining 4.61 h to leisure. 8 + 8.89 + 2.5 + 4.61 = 24."
+   },
+   {
+    "framework": "prompt1",
+    "hours": 10,
+    "feasible": true,
+    "actual_sleep_h": 8.3,
+    "leisure_h": 2.61,
+    "annual_RHE": 3211,
+    "annual_nominal_hours": 3390,
+    "note": "TIB 8.89 h, leisure 2.61 h."
+   },
+   {
+    "framework": "prompt1",
+    "hours": 12,
+    "feasible": true,
+    "actual_sleep_h": 8.3,
+    "leisure_h": 0.61,
+    "annual_RHE": 3709,
+    "annual_nominal_hours": 4068,
+    "note": "TIB 8.89 h, leisure 0.61 h. Starting from S1 or S3 instead: 3755 / 3518 (S3 sleep 8.1 h, leisure 0)."
+   },
+   {
+    "framework": "prompt1",
+    "hours": 14,
+    "feasible": true,
+    "actual_sleep_h": 7,
+    "leisure_h": 0,
+    "annual_RHE": 3777,
+    "annual_nominal_hours": 4746,
+    "note": "This is S2 (TIB 7.5 h). S1 gives 3979 (sleep 7.6 h) and S3 gives 3439 (sleep 6.3 h, irregular). Debt equilibrium S2 about 5.5 h; A(h1) about 85."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 3.1,
+    "annual_RHE": 2601,
+    "annual_nominal_hours": 2712,
+    "note": "TIB 8.60 h, life 4.30 h (includes exercise and meditation)."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 10,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 1.1,
+    "annual_RHE": 3149,
+    "annual_nominal_hours": 3390,
+    "note": "Feasible maximum 11.1 h."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 12,
+    "feasible": false,
+    "actual_sleep_h": 7.16,
+    "leisure_h": 0,
+    "annual_RHE": 3433,
+    "annual_nominal_hours": 4068,
+    "note": "Infeasible by 0.9 h. Shown as a conditional variant that breaks the sleep condition: TIB cut to 7.70 h (7.16 h actual). Alternative variant that breaks exercise and meditation (dropped) instead: sleep 8.0 h, leisure 0.48 h, 3622 RHE. That figure is an upper bound, because the model has no exercise benefit."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 14,
+    "feasible": false,
+    "actual_sleep_h": 5.3,
+    "leisure_h": 0,
+    "annual_RHE": 3236,
+    "annual_nominal_hours": 4746,
+    "note": "Infeasible by 2.9 h. Conditional variant breaking sleep: 5.30 h actual (Belenky/Van Dongen-level restriction; debt equilibrium about 13 h). Variant that drops exercise and meditation and then cuts sleep to 6.59 h: 3640."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 4.65,
+    "annual_RHE": 2626,
+    "annual_nominal_hours": 2712,
+    "note": "TIB 8.42 h, life 2.93 h."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 10,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 2.65,
+    "annual_RHE": 3183,
+    "annual_nominal_hours": 3390,
+    "note": "Feasible."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 12,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 0.65,
+    "annual_RHE": 3706,
+    "annual_nominal_hours": 4068,
+    "note": "Feasible (maximum 12.65 h)."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 14,
+    "feasible": false,
+    "actual_sleep_h": 6.72,
+    "leisure_h": 0,
+    "annual_RHE": 3771,
+    "annual_nominal_hours": 4746,
+    "note": "Infeasible by 1.35 h. Conditional variant breaking sleep: 6.72 h actual. Variant dropping exercise and meditation, then sleep 7.76 h: 4036 (upper bound; exercise benefit not modelled)."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 1,
+    "annual_RHE": 2592,
+    "annual_nominal_hours": 2712,
+    "note": "TIB 8.89 h, life 6.11 h, maximum 9.0 h."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 10,
+    "feasible": false,
+    "actual_sleep_h": 7.1,
+    "leisure_h": 0,
+    "annual_RHE": 2914,
+    "annual_nominal_hours": 3390,
+    "note": "Infeasible by 1.0 h. Conditional variant breaking sleep: 7.10 h. Variant dropping exercise and meditation (sleep kept at 8.0 h, leisure 0.69 h): 3098."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 12,
+    "feasible": false,
+    "actual_sleep_h": 5.3,
+    "leisure_h": 0,
+    "annual_RHE": 2857,
+    "annual_nominal_hours": 4068,
+    "note": "Infeasible by 3.0 h. Conditional variant breaking sleep: 5.30 h. Dropping exercise and meditation, then sleep 6.83 h: 3285."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 14,
+    "feasible": false,
+    "actual_sleep_h": 3.5,
+    "leisure_h": 0,
+    "annual_RHE": 2530,
+    "annual_nominal_hours": 4746,
+    "note": "Infeasible by 5.0 h. The conditional sleep cut to 3.5 h is outside the model's validity: wake of about 20.5 h exceeds McCauley's ~20.2 h critical value, where debt would not converge. Dropping exercise and meditation, then sleep 5.03 h: 3062."
+   }
+  ],
+  "increments": [
+   {
+    "framework": "prompt1",
+    "step": "8->10",
+    "block_contribution_RHE": 591,
+    "spillover_RHE": -31,
+    "net_RHE": 560,
+    "note": "Sleep stays at 8.3 h. Spillover comes only from slightly more slow load fatigue (more hours above 6 h and leisure 4.6 -> 2.6 h). About 0.87 RHE per added nominal hour."
+   },
+   {
+    "framework": "prompt1",
+    "step": "10->12",
+    "block_contribution_RHE": 589,
+    "spillover_RHE": -91,
+    "net_RHE": 498,
+    "note": "Sleep stays at 8.3 h. Leisure 2.6 -> 0.6 h raises slow fatigue. Positive in every one-at-a-time variant."
+   },
+   {
+    "framework": "prompt1",
+    "step": "12->14",
+    "block_contribution_RHE": 495,
+    "spillover_RHE": -427,
+    "net_RHE": 68,
+    "note": "Sleep 8.3 -> 7.0 h (debt equilibrium about 5.5 h), leisure 0.6 -> 0 h. The sign is not pinned down. Across sampled parameter sets the 10th/50th/90th percentiles are -453 / -93 / +195, negative in 65% of sets; the block contribution is always +360 to +520. It turns negative when the learning cost of debt is at least 1.22%/h (base 0.9), the debt time constant is 10 d, sleep need is 8.9 h, alpha_B is at least 0.0016, debt_amp is 0.2, F_max is 0.16, or tau_B is 45 d."
+   },
+   {
+    "framework": "prompt1 (14 h = S1, sleep 7.6 h)",
+    "step": "12->14",
+    "block_contribution_RHE": 527,
+    "spillover_RHE": -303,
+    "net_RHE": 224,
+    "note": "A smaller sleep cut (8.3 -> 7.6 h) keeps the net positive in the base run."
+   },
+   {
+    "framework": "prompt1 (14 h = S3, sleep 6.3 h)",
+    "step": "12->14",
+    "block_contribution_RHE": 443,
+    "spillover_RHE": -521,
+    "net_RHE": -78,
+    "note": "12 h here already has sleep 8.1 h and no leisure. A cut to 6.3 h plus irregular timing makes the net negative."
+   },
+   {
+    "framework": "prompt2_base",
+    "step": "8->10",
+    "block_contribution_RHE": 583,
+    "spillover_RHE": -35,
+    "net_RHE": 548,
+    "note": "Both schedules are feasible; sleep is fixed at 8.0 h."
+   },
+   {
+    "framework": "prompt2_base (12 h = conditional sleep-cut variant)",
+    "step": "10->12",
+    "block_contribution_RHE": 547,
+    "spillover_RHE": -263,
+    "net_RHE": 284,
+    "note": "12 h is infeasible. Sleep 8.0 -> 7.16 h breaks condition 1 (sleep)."
+   },
+   {
+    "framework": "prompt2_base (both conditional, sleep-cut)",
+    "step": "12->14",
+    "block_contribution_RHE": 409,
+    "spillover_RHE": -606,
+    "net_RHE": -197,
+    "note": "Sleep 7.16 -> 5.30 h. Negative in 93% of sampled sets (10th/50th/90th: -825 / -347 / -51)."
+   },
+   {
+    "framework": "prompt2_base (conditional: drop exercise+meditation, then cut sleep)",
+    "step": "10->12",
+    "block_contribution_RHE": 575,
+    "spillover_RHE": -102,
+    "net_RHE": 474,
+    "note": "Breaks the exercise and meditation conditions; sleep is kept. Overstated, because the model has no exercise-to-learning or health pathway."
+   },
+   {
+    "framework": "prompt2_base (conditional: drop exercise+meditation, then cut sleep)",
+    "step": "12->14",
+    "block_contribution_RHE": 474,
+    "spillover_RHE": -456,
+    "net_RHE": 17,
+    "note": "Sleep 8.0 -> 6.59 h. Essentially zero; the sign is fragile, like prompt-1 12->14."
+   },
+   {
+    "framework": "prompt2_tight",
+    "step": "8->10",
+    "block_contribution_RHE": 588,
+    "spillover_RHE": -31,
+    "net_RHE": 558,
+    "note": "Feasible."
+   },
+   {
+    "framework": "prompt2_tight",
+    "step": "10->12",
+    "block_contribution_RHE": 591,
+    "spillover_RHE": -68,
+    "net_RHE": 523,
+    "note": "Feasible (leisure 2.65 -> 0.65 h)."
+   },
+   {
+    "framework": "prompt2_tight (14 h = conditional sleep-cut)",
+    "step": "12->14",
+    "block_contribution_RHE": 489,
+    "spillover_RHE": -424,
+    "net_RHE": 65,
+    "note": "Sleep 8.0 -> 6.72 h. Small; the sign depends on the same debt parameters as prompt-1 12->14."
+   },
+   {
+    "framework": "prompt2_tight (conditional: drop exercise+meditation)",
+    "step": "12->14",
+    "block_contribution_RHE": 535,
+    "spillover_RHE": -206,
+    "net_RHE": 329,
+    "note": "Sleep only 8.0 -> 7.76 h. Upper bound; exercise benefits are not modelled."
+   },
+   {
+    "framework": "prompt2_generous (conditional sleep-cut)",
+    "step": "8->10",
+    "block_contribution_RHE": 541,
+    "spillover_RHE": -218,
+    "net_RHE": 322,
+    "note": "10 h is infeasible; sleep 8.0 -> 7.10 h."
+   },
+   {
+    "framework": "prompt2_generous (conditional sleep-cut)",
+    "step": "10->12",
+    "block_contribution_RHE": 448,
+    "spillover_RHE": -505,
+    "net_RHE": -57,
+    "note": "Sleep 7.10 -> 5.30 h."
+   },
+   {
+    "framework": "prompt2_generous (conditional sleep-cut)",
+    "step": "12->14",
+    "block_contribution_RHE": 319,
+    "spillover_RHE": -647,
+    "net_RHE": -327,
+    "note": "Sleep 5.3 -> 3.5 h, outside the model's validity; the true loss is probably larger."
+   },
+   {
+    "framework": "prompt2_generous (conditional: drop exercise+meditation, then cut sleep)",
+    "step": "10->12",
+    "block_contribution_RHE": 522,
+    "spillover_RHE": -335,
+    "net_RHE": 186,
+    "note": "Sleep 8.0 -> 6.83 h."
+   },
+   {
+    "framework": "prompt2_generous (conditional: drop exercise+meditation, then cut sleep)",
+    "step": "12->14",
+    "block_contribution_RHE": 390,
+    "spillover_RHE": -613,
+    "net_RHE": -223,
+    "note": "Sleep 6.83 -> 5.03 h."
+   }
+  ],
+  "optimization": [
+   {
+    "scenario": "A",
+    "daily_hours": 11,
+    "full_rest_days_per_14": 1,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 6,
+    "annual_RHE": 3395,
+    "annual_nominal_hours": 3729,
+    "near_optimal_band": "10.75-11.0 h, 1 full rest day per 14, no partial days (10.75 h = -1.7%). Alternatives: 1 partial day -2.9%, a 2nd rest day -6.3%, 3 rest days -13%.",
+    "note": "Base budget (life 4.3 h, sleep 8.0 h). The optimum is the feasible maximum on a 0.25 h grid (exact maximum 11.1 h). The last 0.5 h adds about 0.7 RHE per nominal hour. It is unchanged in every one-at-a-time variant, and 98% of sampled sets keep 11.0 h (minimum 10.25 h; 97.5% keep 1 rest day). It leaves the maximum only if slow fatigue is at least 5x base (then 10.5 h, band 9.75-11 h, 1-2 rest days; at 8x, 9.75 h), or if a mechanism not modelled (retroactive interference or a limit on daily consolidation) makes each added hour cut the rest of that day's learning by about 8% or more."
+   },
+   {
+    "scenario": "B0 (>=1 rest day/week, no leisure floor)",
+    "daily_hours": 11,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 6,
+    "annual_RHE": 3180,
+    "annual_nominal_hours": 3443,
+    "near_optimal_band": "10.75-11.0 h with 2 rest days per 14.",
+    "note": "The weekly rest day alone costs 6.3% against A. The model credits the 2nd rest day with only about 1.4% recovery, against 7.7% of study days lost."
+   },
+   {
+    "scenario": "B60",
+    "daily_hours": 10,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 66,
+    "annual_RHE": 2936,
+    "annual_nominal_hours": 3130,
+    "near_optimal_band": "Only 10.0 h / 2 rest / 0 partial falls within 2%. Next options: 9.75 h -2.2%, 1 partial day -3.7%, 3 rest days -7.7%.",
+    "note": "Base budget, 60-min floor (maximum 10.1 h). 13.5% below A. The optimum stays at the maximum the floor allows."
+   },
+   {
+    "scenario": "B90",
+    "daily_hours": 9.5,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 96,
+    "annual_RHE": 2801,
+    "annual_nominal_hours": 2973.5,
+    "near_optimal_band": "Only 9.5 h / 2 rest / 0 partial (9.25 h -2.5%).",
+    "note": "Base budget (maximum 9.6 h). 17.5% below A. Each 30-min floor step costs about 4-5% of annual RHE, slightly less than proportional to the hours lost, because leisure lowers slow fatigue."
+   },
+   {
+    "scenario": "B120",
+    "daily_hours": 9,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 126,
+    "annual_RHE": 2678,
+    "annual_nominal_hours": 2817,
+    "near_optimal_band": "Only 9.0 h / 2 rest / 0 partial (8.75 h -2.4%).",
+    "note": "Base budget (maximum 9.1 h). 21% below A."
+   },
+   {
+    "scenario": "A-tight",
+    "daily_hours": 12.5,
+    "full_rest_days_per_14": 1,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 9,
+    "annual_RHE": 3810,
+    "annual_nominal_hours": 4237.5,
+    "near_optimal_band": "12.25-12.5 h, 1 rest day, no partial.",
+    "note": "Tight budget (life 2.93 h, maximum 12.65 h)."
+   },
+   {
+    "scenario": "B60-tight",
+    "daily_hours": 11.5,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 69,
+    "annual_RHE": 3362,
+    "annual_nominal_hours": 3599.5,
+    "near_optimal_band": "11.25-11.5 h, 2 rest days.",
+    "note": "Tight budget."
+   },
+   {
+    "scenario": "B90-tight",
+    "daily_hours": 11,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 99,
+    "annual_RHE": 3238,
+    "annual_nominal_hours": 3443,
+    "near_optimal_band": "Only 11.0 h / 2 rest.",
+    "note": "Tight budget."
+   },
+   {
+    "scenario": "B120-tight",
+    "daily_hours": 10.5,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 129,
+    "annual_RHE": 3104,
+    "annual_nominal_hours": 3286.5,
+    "near_optimal_band": "Only 10.5 h / 2 rest.",
+    "note": "Tight budget."
+   },
+   {
+    "scenario": "A-generous",
+    "daily_hours": 9,
+    "full_rest_days_per_14": 1,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 0,
+    "annual_RHE": 2850,
+    "annual_nominal_hours": 3051,
+    "near_optimal_band": "Only 9.0 h / 1 rest (8.75 h about -2.7%).",
+    "note": "Generous budget (life 6.11 h, maximum 9.0 h)."
+   },
+   {
+    "scenario": "B60-generous",
+    "daily_hours": 8,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 60,
+    "annual_RHE": 2408,
+    "annual_nominal_hours": 2504,
+    "near_optimal_band": "Only 8.0 h / 2 rest.",
+    "note": "Generous budget."
+   },
+   {
+    "scenario": "B90-generous",
+    "daily_hours": 7.5,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 90,
+    "annual_RHE": 2274,
+    "annual_nominal_hours": 2347.5,
+    "near_optimal_band": "Only 7.5 h / 2 rest.",
+    "note": "Generous budget."
+   },
+   {
+    "scenario": "B120-generous",
+    "daily_hours": 7,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 120,
+    "annual_RHE": 2135,
+    "annual_nominal_hours": 2191,
+    "near_optimal_band": "Only 7.0 h / 2 rest.",
+    "note": "Generous budget."
+   }
+  ],
+  "sensitivity": [
+   {
+    "assumption": "Effort drift into low-effort methods (p_max, v_low; Blain-based)",
+    "variation": "p_max 0.15-0.6; v_low 0.85-0.55",
+    "effect": "S2 3m R14 moves between 91 and 78. The first sustained <=80 hour moves from none to h14 (S3: h13). The prompt-1 12->14 net stays positive (+47 to +96). Optimal hours unchanged.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Within-block time-on-task ceiling (F_max)",
+    "variation": "3% to 16%",
+    "effect": "S2 R14 moves between 88 and 77. The <=80 hour moves from none to h14 (first touch h9). The prompt-1 12->14 net moves from +132 to -36. Optimal hours unchanged.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Same-content saturation within a block (zeta), i.e. task allocation",
+    "variation": "0 (good rotation) to 4%/h (one subject per 5 h block)",
+    "effect": "S2 R14 moves between 87 and 73. The <=80 hour moves from none to h13 sustained (first touch h8). 12->14 net +79 to +36.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Warm-up at block start (hour-1 normalisation)",
+    "variation": "0-15 min",
+    "effect": "S2 R14 moves between 78 and 90, because hour 1 is the denominator of R. The <=80 hour moves from none to h14. This is partly an artifact of the definition of R. A and RHE barely change.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Sleep-debt time constant tau_I (convergence rate and level)",
+    "variation": "2.5-10 days",
+    "effect": "S2 R14 85 -> 79 (<=80 at h14; S3 h12). Prompt-1 12->14: +168 -> -324. Prompt-2 base 12->14: -20 -> -804.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Learning cost per hour of effective debt (beta_I; mapping from g to a fraction)",
+    "variation": "0.4-1.8 %/h",
+    "effect": "R unchanged (a level effect). Prompt-1 12->14: +176 -> -126; break-even 1.22%/h. Prompt-2 base 12->14 stays negative (-43 to -475).",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Individual sleep need",
+    "variation": "7.9-8.9 h",
+    "effect": "Prompt-1 12->14: +169 -> -73. S2 R14 85 -> 82.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Debt amplifies time-on-task and dip (debt_amp)",
+    "variation": "0-0.2 per h",
+    "effect": "S2 R14 86 -> 82. Prompt-1 12->14: +176 -> -38.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Slow load-fatigue strength (alpha_B, tau_B, H0)",
+    "variation": "alpha_B 0-0.0025, tau_B 7-45 d, H0 4-8 h; structural scan up to 20x alpha_B",
+    "effect": "R unchanged; A levels change by up to about 10 points. Prompt-1 12->14: +185 -> -107 (break-even alpha_B 0.0016); tau_B 45 d gives -39. Scenario A optimum stays at the feasible maximum up to 3x alpha_B; at 5x it is 10.5 h (band 9.75-11); at 8-12x, 9.75 h; at 20x, 9.75 h with 3 rest days.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Starting scenario for the prompt-1 14 h day",
+    "variation": "S1 (sleep 7.6 h) / S2 / S3 (6.3 h, irregular)",
+    "effect": "12->14 net: +224 / +68 / -78.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Circadian/homeostatic parameters (tau_crit, gamma_S, kappa_I, a_c, tau_r, tau_d)",
+    "variation": "tau_crit 15-17 h; gamma_S 0.35-1.2; kappa_I 0-0.012; others over their ranges",
+    "effect": "S2 R14 stays within 82-85 (S3 reaches <=80 at h14 with tau_crit 15, gamma_S 1.2 or kappa_I 0.012). Prompt-1 12->14 stays +51 to +74. Prompt-2 base 12->14 stays -96 to -331.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Rest-day recovery (phi_rest, sleep-in, rebound sleep)",
+    "variation": "phi_rest 0.15-0.5; sleep-in 0.5-2.5 h; rho 0.15-0.5",
+    "effect": "Annual RHE changes by <1%. 1 rest day per 14 remains optimal in Scenario A. 12->14 prompt-1 net +50 to +89.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Leisure and exercise as recovery (lambda_L, omega_ex)",
+    "variation": "lambda_L 0-0.7; omega_ex 0-1",
+    "effect": "Optimal hours unchanged (also with lambda_L 0.7 combined with 1-20x slow fatigue). Leisure floors cost roughly the hours they remove.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Joint parameter uncertainty (240-set Latin hypercube; log-uniform for time constants and scale factors)",
+    "variation": "All ranges at once; 10th-90th percentiles",
+    "effect": "<=80 reached by h14 in about 38% (S1), 51-57% (S2) and 69-74% (S3) of sets. <=50 reached in 0% of sets. Prompt-1 12->14 negative in 65% of sets. Prompt-2 base 12->14 (sleep-cut) negative in 93%. Scenario A optimum at 11.0 h in 98%.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Sampling scheme for the band",
+    "variation": "Uniform instead of log-uniform for time constants and scale factors",
+    "effect": "More pessimistic: prompt-1 12->14 negative in 84% of sets (median -262). S2 reaches <=80 by h14 in 69% of sets. Directions are unchanged.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Post-lunch nap (S2), paid for from time in bed",
+    "variation": "25-min nap slot (20 min asleep) splitting block 2",
+    "effect": "R at h8-9 rises by 3-5 points; annual RHE +0.6% (3801 vs 3777). Conclusions unchanged.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Structure: no retroactive interference or daily consolidation capacity",
+    "variation": "Analytic break-even",
+    "effect": "Under prompt-2, optimal hours would fall below the feasible maximum only if each added hour reduced the rest of that day's learning by about 8% or more (marginal hour about 0.7 RHE vs about 9 RHE from the other hours).",
+    "flips_conclusion": false
+   }
+  ],
+  "robust_conclusions": [
+   "Within a 14 h day, R never collapses to 50% or below in any scenario or timepoint (0% of sampled parameter sets). Debt converges to an equilibrium, and the steep physiological decline begins only after about 16 h awake, which this 14 h schedule barely reaches (the last hour ends 15-16.5 h after waking).",
+   "The shape of R is not monotone. Hour 2 is about 105 (warm-up). Hours 7-9 form a transient post-lunch trough (about 85-90). The dinner break brings R back to about 90 at h10-11. Then R slides steadily to h14 (about 87 / 84 / 81 for S1 / S2 / S3). The late slide comes mostly from time-on-task, effort drift and content saturation. The circadian and homeostatic terms add only about 1-4% at h13-14.",
+   "S1-S3 differ much more in level (A) than in shape (R). At 3 months A(h1) is about 90 / 85 / 80, and the daily RHE for 14 nominal hours is about 11.7 / 11.1 / 10.1. So one of the 14 nominal hours equals about 0.72-0.84 of a rested first hour on average.",
+   "Differences between early and late in the year are confined to the first 3-4 weeks, while debt and slow fatigue approach equilibrium (A about 5 points higher in weeks 1-2). The 3-, 6- and 12-month results are identical, because the evidence gives no basis for a month-scale trend.",
+   "When sleep is protected (prompt-1 up to 12 h; prompt-2 tight up to 12 h), going 8->10 and 10->12 adds about +500-560 RHE per year per 2 h/day, about 0.75-0.87 RHE per added nominal hour, with small spillover (-30 to -90). This is positive in every sensitivity run.",
+   "Extending the day by cutting sleep below about 6.5-7 h destroys most or all of the block gain. Under prompt-2 base, 12->14 with sleep cut to 5.3 h is negative in 93% of sampled sets; the generous-budget sleep cuts are negative from 10->12.",
+   "14 h/day is infeasible under prompt-2 in all three budgets (short by 1.35 / 2.9 / 5.0 h).",
+   "Under prompt-2 (sleep fixed at 8 h), the Scenario A optimum is the feasible maximum with 1 full rest day per 14 and no partial days (base 11.0 h, tight 12.5 h, generous 9.0 h). Under Scenario B the optimum is the maximum the leisure floor allows, with exactly 2 rest days per 14. The weekly rest day costs about 6%, and each 30-min step of the floor costs about 4-5% of annual RHE. This holds in every one-at-a-time variant and in 98% of sampled sets."
+  ],
+  "fragile_conclusions": [
+   "Whether R reaches 80% or below within 14 h, and at which hour: not in the base run (S3 is borderline at h14, about 80.5). Across sampled parameter sets it is reached by h14 in about 38% (S1), 55% (S2) and 74% (S3), with 10th-percentile hours h12 / h12 / h10. The answer depends on effort drift, the time-on-task ceiling, content saturation, the warm-up size (hour-1 normalisation) and the debt time constant.",
+   "The sign of 12->14 under prompt-1 (sleep 8.3 -> 7.0 h). The base run gives +68 RHE per year (+2%), but 65% of sampled sets give a negative net (median -93). The added block is always worth about +360 to +520. The sign depends on whether the sleep and leisure spillover exceeds that. The main drivers are the learning cost per hour of debt (break-even about 1.2%/h vs base 0.9%/h), the debt time constant, individual sleep need, debt amplification of fatigue, and the slow load fatigue. It is positive if the 14 h day is S1-like (+224) and negative if S3-like (-78).",
+   "12->14 under prompt-2 tight (sleep cut to 6.7 h, +65) and base with exercise dropped (+17) are essentially zero with the same fragility.",
+   "Absolute A levels and annual RHE depend strongly on the slow load fatigue term B (about 8% at 14 h/day in the base run), which has no direct evidence. It could plausibly be anywhere from 0 to about 20%.",
+   "Conditional variants that drop exercise or meditation look favourable only because the model contains no benefit of exercise for learning or health.",
+   "The optimal hours sitting at the feasible maximum under prompt-2 depends on the model structure. It moves down only with slow fatigue at 5x base or more, or with an interference or consolidation-capacity mechanism of about 8% per added hour or more; neither is in the digest.",
+   "The nap gain (+0.6%) and the depth of the post-lunch trough are assumption-driven."
+  ],
+  "self_critique": "1. The late-day decline is driven mainly by non-physiological terms: effort drift extrapolated from Blain/Wiehler, time-on-task and content saturation. Their sizes are assumptions. The physiology-first part mainly sets the start-of-day level (A) and the evening decline beyond about 14 h awake, which a 14 h day barely reaches. The model's answer to 'when does R fall to 80%' is therefore largely a statement about untested behavioural drift.\n\n2. The circadian threshold is calibrated so a rested person is exactly flat until 16 h awake, following the digest summary. It ignores time-of-day synchrony effects and the late chronotype of 20-year-olds. The sleep midpoint is fixed at 02:45; social jet lag appears only as a flat 3% in S3.\n\n3. The two-process time constants come from memory, not from the digest.\n\n4. Converting effect sizes (g) into fractional learning loss assumes an outcome CV of 0.4-0.6. This bridge is untestable and scales every sleep effect.\n\n5. A single-time-constant leaky debt integrator cannot reproduce both Belenky (stabilisation at 7 h TIB) and Van Dongen (continued decline at 6 h TIB). The 2.5-10 day range brackets both but not the nonlinearity; 3.5-5.3 h sleep variants are outside validity.\n\n6. Slow fatigue B is a phenomenological placeholder that nonetheless sets about half of the A deficit and partly decides the 12->14 sign.\n\n7. The model is deterministic: no illness, bad nights, motivation shocks, burnout collapse or dropout tail, no exercise benefits, and individual differences only through parameter ranges. The base parameters sit in the upper half of the sampled band for late hours (S2 h14: base 84 vs sampled median 79), because several ranges extend further in the pessimistic direction.\n\n8. RHE is linear in state-adjusted hours. Knowledge-level diminishing returns, spacing across days and the risk that a 7-day test overvalues massed practice are outside RHE. They would lower the value of extra hours for every schedule but would not change the ranking when sleep is protected.\n\n9. Rest and partial days are spread evenly; partial days are morning-only half days. The grid is 0.25 h, so exact maxima such as 11.1 h were not evaluated.\n\n10. R is sensitive to how hour 1 is normalised (warm-up); A and RHE are more stable targets for comparing schedules."
+ },
+ "M3_minimal": {
+  "model_name": "M3_minimal (minimal-skeptic: 3-layer multiplicative state x within-day model, 4 decline forms, Latin-hypercube assumption sweep)",
+  "code_path": "model/independent/M3_minimal.py",
+  "structure_summary": "M3_minimal is the simplest structure I could build that still keeps apart the things the task requires. It has three multiplicative layers and only two interaction terms.\n\n(1) Within-day value of nominal hour h. The hour value is w(h) x alloc(D) x (1 - post-lunch dip) x (1 - late-wake penalty). D is the within-day decline, driven by an effective load L. L mixes sustained load (all study hours so far today) with transient load (hours since the last meal break), and the break resets the transient part. D(L) takes four candidate shapes, each normalised to the same magnitude D14 at the no-break load of hour 14: linear, convex (power), hinge (flat, then linear) and saturating (front-loaded). Allocation: the student can switch to lower-demand spaced review, which puts a soft floor under the hour value. Warm-up makes hour 1 slightly worse than hour 2. The late-wake penalty starts at 16 h awake, and that onset moves earlier by 1 h for each hour of chronic sleep debt.\n\n(2) Start-of-day state S_day. It is built from three parts. X is a sleep-debt state: an EWMA of the nightly shortfall against need, time constant 2-8 days. It settles at an equilibrium and does not accumulate linearly. C is a multi-day study-load state with a time constant of days. Its target rises above a sustainable daily dose H_s and falls with free leisure. A rest day removes only a fraction of C (never a full reset). Z is a slow, months-scale load term with tau = 90 d.\n\n(3) Adaptation. The within-day decline shrinks by up to 25% over roughly the first month (endurance practice).\n\nR removes layer 2. A keeps it and divides by a rested twin's first hour. RHE is the sum of A/100 over nominal hours. The engaged fraction e(h) is only a decomposition: half of any loss is booked as lost engagement and half as lower per-minute efficiency, because no evidence separates the two. The split changes no output.\n\nThe sweep has 19 parameters plus a form-specific shape parameter, drawn by Latin hypercube: 600 samples per form, 2400 in total, seed 20260924. Every band is the 5th-95th percentile of this sweep, not a confidence interval. Pooled medians weight the four forms equally, and that weighting is itself arbitrary.\n\nTime budgets come from repo time_budget.py (prompt-2) and digest S1-S3 (prompt-1). All 354 schedules pass a check that study + TIB + life + leisure = 24 h on every day, with extra rest-day sleep taken out of leisure. R(t,1) = 100 is asserted in code.",
+  "equations": "Units: h = hours, d = days; Q in hypothetical learning units per nominal hour; RHE in rested-first-hour equivalents.\nQ(t,h) = K(t) * S_day(t) * V_t(h)   [K = knowledge level, cancels in R and A; not modelled]\nS_day(t) = (1 - beta_s*X_t) * (1 - C_t - Z_t) * (1 - iota*irregular)   [dimensionless, clipped to 0..1]\nX_t = max(0, X_{t-1} + ((N - sleep_night(t)) - X_{t-1}) / tau_X)   [h of chronic nightly shortfall; sleep_night = actual sleep of schedule (+ext before a full rest day, +ext/2 before a half day), cap 10 h]\nStudy day: C_{t+1} = C_t + (c_max*load_t - C_t)/tau_C ;  load_t = g(H_t)*(1 - lam_L*min(leisure_t,2 h)/2 h) ;  g(H) = max(0,(H - H_s)/(14 h - H_s))\nFull rest day: C_{t+1} = C_t*(1 - rho_rest), load = 0.  Half day: study H/2, then C *= (1 - rho_rest/2)\nZ_{t+1} = Z_t + (m_slow*load_t - Z_t)/90 d\nV_t(h) = w(h) * max(1 - D, v_low*(1 - D/2)) * (1 - dip*dipf(h)) * (1 - gamma_w*max(0, wake(h) - (16 h - X_t)))\nw(1) = 1 - u, w(h>1) = 1;  dipf = 1 (first hour after lunch), 0.5 (second), else 0\nD = clip( D14*(1 - alpha_ad*(1 - exp(-t/30 d))) * (1 + kappa*X_t) * s_form(L(h)/13.5 h), 0, 0.95)\nL(h) = (1 - phi)*m_h + phi*n_h ; m_h = study hours before the midpoint of hour h, n_h = study hours since the last meal break (meal breaks after round(5H/14) and round(10H/14) hours)\ns_linear(x) = x ; s_convex(x) = x^p ; s_hinge(x) = max(0, x - x_h)/(1 - x_h), x_h = onset/13.5 ; s_saturating(x) = (1 - e^{-x/c})/(1 - e^{-1/c})\nwake(h) = 0.30*life + m_h + 0.5 + meal durations passed (0.25*life each)   [h since waking]\nR(t,h) = 100 * V_t(h)/V_t(1)  (so R(t,1) = 100 exactly); timepoint R = mean of daily R over the window's study days\nA(t,h) = 100 * S_day(t) * V_t(h) / Q_ref ; Q_ref = V of hour 1 with X = C = Z = 0 (rested twin, same adaptation and task mix)\nRHE = sum over days, sum over nominal hours of weight_h * A/100 (weight < 1 for a final partial hour)\nTransient vs sustained: V_sust uses L_sust = (1 - phi)*m_h + phi*0.5 and no dip; transient gap = V_sust - V\nEngagement decomposition only: e(h) = e0*(1 - sigma_e*(1 - V/Vmax)), e0 = 0.85, sigma_e = 0.5; efficiency per engaged minute k = (V/Vmax)/(e/e0)\nBudget (every day): study + TIB + life + leisure = 24 h; TIB = actual sleep / sleep efficiency.\nPrompt-1: TIB = min(TIB14 + (14 - H), max(TIB14, 8.3/eff)); the rest of the freed time goes to leisure.\nPrompt-2: TIB = 8/eff, life = 4.30/2.93/6.11 h (base/tight/generous), leisure = 24 - TIB - life - H; if negative the plan is infeasible, and the conditional variant cuts TIB (or drops exercise+meditation first).",
+  "parameters": [
+   {
+    "name": "D14 (within-day decline magnitude)",
+    "value": "0.35 = fraction of demanding-task hour value lost at the no-break load of hour 14, rested, before adaptation",
+    "sensitivity_range": "0.05-0.70 (uniform LHS)",
+    "label": "assumption",
+    "basis": "Digest s2/s6: no data on learning beyond ~6 h. Anchors: Ackerman 2009/2010 (no objective decline over 3.5-5.5 h), Blain 2016/Wiehler 2022 (low-effort shift after ~6 h), Sievertsen 2016 (-0.9% SD/h over a school day), Pencavel 2015 (factory output peaks at ~63 h/wk)."
+   },
+   {
+    "name": "within-day form + shape",
+    "value": "linear; convex p=2; hinge onset 5.5 h of effective load; saturating c=0.30 (600 samples each, equal weight)",
+    "sensitivity_range": "convex p 1.5-3; hinge onset 3-8 h; saturating c 0.15-0.50",
+    "label": "assumption",
+    "basis": "Digest s6: shape not pinned down. Hinge onset loosely tied to Blain 2016 (~6 h); saturating form tied to Hopstaken 2015 (~2 h time-on-task decline). Ackerman 2009/2010 argues against front-loaded decline: only 62% of the sweep passes a <=10% decline-by-hour-5 check (linear 39%, convex 97%, hinge 100%, saturating 15%)."
+   },
+   {
+    "name": "phi (transient share of load, reset by meal break)",
+    "value": "0.40",
+    "sensitivity_range": "0.10-0.70",
+    "label": "indirect_estimate",
+    "basis": "Sievertsen 2016: a 20-30 min break gives +1.7% SD against -0.9% SD/h, i.e. ~2 h of decline recovered. Hopstaken 2015: decline reversible with reward. Albulescu 2022: micro-break effect on performance d=0.16, n.s."
+   },
+   {
+    "name": "u (first-hour warm-up penalty)",
+    "value": "0.03",
+    "sensitivity_range": "0-0.08",
+    "label": "assumption",
+    "basis": "No direct anchor; allows R(2) > 100."
+   },
+   {
+    "name": "dip (post-lunch dip)",
+    "value": "0.04 in first post-lunch hour, half in second",
+    "sensitivity_range": "0-0.10",
+    "label": "indirect_estimate",
+    "basis": "Monk 2005 (variable post-lunch dip); Pope 2016 afternoon penalty (0.072 GPA in math)."
+   },
+   {
+    "name": "v_low (value of lower-demand review work; half as fatigue-sensitive)",
+    "value": "0.60 of a rested demanding hour",
+    "sensitivity_range": "0.35-0.85; structural check v_low=0",
+    "label": "assumption",
+    "basis": "Rowland 2014 retrieval g=0.50 (review is valuable); Rohrer 2005/2006 (massed overlearning adds little). Setting it to 0 barely changes results (the <=50 hour is reached in 9% instead of 6% of the S2 sweep)."
+   },
+   {
+    "name": "gamma_w (loss per hour awake beyond 16 h - X)",
+    "value": "0.05 per h",
+    "sensitivity_range": "0-0.12",
+    "label": "indirect_estimate",
+    "basis": "Dijk & Czeisler 1994, Wright 2002 (alertness roughly stable for ~16 h when rested); Van Dongen 2003 critical wake 15.84 h. W0 = 16 h fixed."
+   },
+   {
+    "name": "kappa (steepening of within-day decline per h of sleep shortfall)",
+    "value": "0.10 per h",
+    "sensitivity_range": "0-0.25",
+    "label": "assumption",
+    "basis": "Vigilance time-on-task x sleep-loss interaction; not in the digest [U]."
+   },
+   {
+    "name": "N (actual sleep need)",
+    "value": "8.4 h",
+    "sensitivity_range": "8.0-8.9 h",
+    "label": "literature_constrained",
+    "basis": "Van Dongen 2003 implied 8.16 h; Kitamura 2016 8.4 h (7.3-9.3); Klerman & Dijk asymptote 8.9 h."
+   },
+   {
+    "name": "beta_s (start-of-day learning loss per h of chronic nightly shortfall)",
+    "value": "0.05 per h",
+    "sensitivity_range": "0.02-0.09",
+    "label": "indirect_estimate",
+    "basis": "Lowe 2017: long-term memory g=-0.19, executive g=-0.32; Cousins 2018 and Lo 2016 (encoding); Crowley 2024 (restriction about as harmful as deprivation). The mapping from PVT-type impairment to learning is untested."
+   },
+   {
+    "name": "tau_X (sleep-debt time constant)",
+    "value": "4 d",
+    "sensitivity_range": "2-8 d",
+    "label": "indirect_estimate",
+    "basis": "Belenky 2003 (stabilises after ~4 d); Kitamura 2016 (~4 d to repay 1 h); McCauley 2009 (stable equilibrium below ~20 h wake)."
+   },
+   {
+    "name": "ext (extra sleep the night before a full rest day)",
+    "value": "1.0 h (0.5 h before a half day)",
+    "sensitivity_range": "0.5-2.0 h",
+    "label": "assumption",
+    "basis": "Weekend catch-up is incomplete (Lo 2017)."
+   },
+   {
+    "name": "iota (S3 irregular-timing penalty)",
+    "value": "0.03",
+    "sensitivity_range": "0-0.06",
+    "label": "assumption",
+    "basis": "Digest S3 definition: irregular timing and lower sleep efficiency."
+   },
+   {
+    "name": "c_max (multi-day load target at 14 h/day, zero leisure)",
+    "value": "0.10 start-of-day loss",
+    "sensitivity_range": "0-0.30; stress test 0.50",
+    "label": "assumption",
+    "basis": "Madigan & Curran 2021 burnout r=-0.24 (correlational); Pencavel 2015; digest s6: not pinned down."
+   },
+   {
+    "name": "H_s (sustainable daily hours with no multi-day load)",
+    "value": "6 h",
+    "sensitivity_range": "4-9 h",
+    "label": "indirect_estimate",
+    "basis": "Pencavel 2015: output proportional to hours up to ~49 h/wk (~8 h/d over 6 d); Ericsson 1993 ~4 h/d (narrative only)."
+   },
+   {
+    "name": "tau_C (multi-day load time constant)",
+    "value": "5 d",
+    "sensitivity_range": "3-14 d",
+    "label": "indirect_estimate",
+    "basis": "de Bloom 2009 (vacation effects fade in 2-4 wk); Speth 2024 (~1 wk)."
+   },
+   {
+    "name": "rho_rest (fraction of load removed by one full rest day)",
+    "value": "0.50",
+    "sensitivity_range": "0.20-0.80; stress test 1.0",
+    "label": "assumption",
+    "basis": "Binnewies 2010 (weekend recovery); digest requirement that a rest day does not fully reset."
+   },
+   {
+    "name": "lam_L (max reduction of load target from free leisure, saturating at 2 h/day)",
+    "value": "0.30",
+    "sensitivity_range": "0-0.60",
+    "label": "assumption",
+    "basis": "No learning-outcome evidence; vacation/recovery literature is on well-being (de Bloom 2009, Speth 2024)."
+   },
+   {
+    "name": "m_slow (months-scale load target, tau 90 d)",
+    "value": "0.03",
+    "sensitivity_range": "0-0.08",
+    "label": "assumption",
+    "basis": "No evidence on months-scale accumulation with adequate sleep, so it is kept small."
+   },
+   {
+    "name": "alpha_ad (endurance adaptation of within-day decline, tau 30 d)",
+    "value": "0.10",
+    "sensitivity_range": "0-0.25",
+    "label": "indirect_estimate",
+    "basis": "Brown, Kaur, Kingdon & Schofield 2025: 22% less within-test decline after practice."
+   },
+   {
+    "name": "e0, sigma_e (engaged-fraction decomposition)",
+    "value": "0.85, 0.50",
+    "sensitivity_range": "not swept: changes no output",
+    "label": "assumption",
+    "basis": "Szpunar 2013 / Wammes 2016 mind-wandering; no evidence separates engagement loss from per-minute efficiency."
+   },
+   {
+    "name": "sleep efficiency and TIB",
+    "value": "S1 7.6/8.25, S2 7.0/7.5, S3 6.3/7.0; prompt-2 0.95/0.93/0.90 (tight/base/generous)",
+    "sensitivity_range": "scenario set S1-S3; budgets tight/base/generous",
+    "label": "assumption",
+    "basis": "Digest s1 and repo time_budget.py (19-21 y norms not yet verified)."
+   },
+   {
+    "name": "prompt-1 sleep target for freed time",
+    "value": "8.3 h actual",
+    "sensitivity_range": "8.2-8.5 h (one-at-a-time)",
+    "label": "literature_constrained",
+    "basis": "Task spec (~8.2-8.5 h); Kitamura 2016 8.4 h. Changing it moves the central 12->14 net by <=20 RHE."
+   },
+   {
+    "name": "day template",
+    "value": "meal breaks after 5/14 and 10/14 of study hours, each 25% of life; pre-study 30% of life; leisure placed after study",
+    "sensitivity_range": "not swept",
+    "label": "assumption",
+    "basis": "Typical Korean repeat-student academy day (07-12 / 13-18 / 19-23)."
+   }
+  ],
+  "hourly_tables": [
+   {
+    "scenario": "S1",
+    "timepoint": "wk1-2",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     85,
+     80
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     75,
+     70,
+     70,
+     65,
+     65,
+     60,
+     60,
+     60,
+     60,
+     55,
+     50
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100
+    ],
+    "A": [
+     90,
+     90,
+     90,
+     90,
+     85,
+     85,
+     85,
+     85,
+     80,
+     80,
+     80,
+     80,
+     75,
+     70
+    ],
+    "first_hour_A": 90,
+    "daily_RHE": 11.6
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "1m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     85,
+     80
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     75,
+     70,
+     70,
+     70,
+     65,
+     65,
+     60,
+     65,
+     60,
+     55,
+     50
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100
+    ],
+    "A": [
+     85,
+     85,
+     85,
+     85,
+     80,
+     80,
+     80,
+     80,
+     75,
+     75,
+     75,
+     75,
+     70,
+     70
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 11
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "3m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85
+    ],
+    "R_low": [
+     100,
+     90,
+     85,
+     75,
+     70,
+     75,
+     70,
+     70,
+     65,
+     60,
+     65,
+     60,
+     60,
+     55
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100
+    ],
+    "A": [
+     85,
+     85,
+     85,
+     80,
+     80,
+     75,
+     80,
+     80,
+     75,
+     75,
+     75,
+     75,
+     70,
+     70
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 10.8
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "6m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85
+    ],
+    "R_low": [
+     100,
+     90,
+     85,
+     75,
+     70,
+     75,
+     70,
+     70,
+     65,
+     60,
+     65,
+     60,
+     60,
+     55
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100
+    ],
+    "A": [
+     85,
+     85,
+     80,
+     80,
+     80,
+     75,
+     75,
+     80,
+     75,
+     75,
+     75,
+     75,
+     70,
+     70
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 10.7
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "12m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     95,
+     90,
+     95,
+     90,
+     85,
+     85
+    ],
+    "R_low": [
+     100,
+     90,
+     85,
+     75,
+     70,
+     75,
+     70,
+     70,
+     65,
+     60,
+     65,
+     60,
+     60,
+     55
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100
+    ],
+    "A": [
+     80,
+     85,
+     80,
+     80,
+     80,
+     75,
+     75,
+     75,
+     75,
+     75,
+     75,
+     75,
+     70,
+     70
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 10.7
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "wk1-2",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     90,
+     85,
+     75
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     70,
+     65,
+     70,
+     65,
+     65,
+     60,
+     55,
+     60,
+     55,
+     50,
+     45
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100
+    ],
+    "A": [
+     85,
+     90,
+     85,
+     85,
+     85,
+     80,
+     80,
+     80,
+     80,
+     75,
+     80,
+     75,
+     75,
+     65
+    ],
+    "first_hour_A": 85,
+    "daily_RHE": 11.2
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "1m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     90,
+     85,
+     75
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     75,
+     65,
+     70,
+     65,
+     65,
+     60,
+     60,
+     60,
+     55,
+     50,
+     45
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     95
+    ],
+    "A": [
+     80,
+     85,
+     80,
+     80,
+     80,
+     75,
+     75,
+     75,
+     75,
+     70,
+     75,
+     70,
+     70,
+     60
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 10.5
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "3m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     85,
+     80
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     75,
+     70,
+     70,
+     70,
+     65,
+     60,
+     60,
+     60,
+     60,
+     55,
+     50
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     95
+    ],
+    "A": [
+     80,
+     80,
+     80,
+     80,
+     75,
+     75,
+     75,
+     75,
+     75,
+     70,
+     75,
+     70,
+     65,
+     60
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 10.3
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "6m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     85,
+     80
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     75,
+     70,
+     70,
+     70,
+     65,
+     60,
+     60,
+     60,
+     60,
+     55,
+     50
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     95
+    ],
+    "A": [
+     80,
+     80,
+     80,
+     75,
+     75,
+     75,
+     75,
+     75,
+     70,
+     70,
+     70,
+     70,
+     65,
+     60
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 10.2
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "12m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     85,
+     80
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     75,
+     70,
+     70,
+     70,
+     65,
+     60,
+     60,
+     60,
+     60,
+     55,
+     50
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     95
+    ],
+    "A": [
+     80,
+     80,
+     80,
+     75,
+     75,
+     75,
+     75,
+     75,
+     70,
+     70,
+     70,
+     70,
+     65,
+     60
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 10.2
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "wk1-2",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     85,
+     80,
+     70
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     70,
+     65,
+     70,
+     65,
+     60,
+     60,
+     55,
+     60,
+     55,
+     50,
+     40
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100,
+     95
+    ],
+    "A": [
+     80,
+     85,
+     80,
+     80,
+     80,
+     75,
+     75,
+     75,
+     75,
+     70,
+     75,
+     70,
+     65,
+     60
+    ],
+    "first_hour_A": 80,
+    "daily_RHE": 10.5
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "1m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     90,
+     85,
+     90,
+     85,
+     80,
+     70
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     70,
+     65,
+     70,
+     65,
+     60,
+     60,
+     55,
+     55,
+     55,
+     45,
+     40
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100,
+     95
+    ],
+    "A": [
+     75,
+     75,
+     75,
+     75,
+     70,
+     70,
+     70,
+     70,
+     70,
+     65,
+     70,
+     65,
+     60,
+     50
+    ],
+    "first_hour_A": 75,
+    "daily_RHE": 9.6
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "3m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     85,
+     80,
+     70
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     70,
+     65,
+     70,
+     65,
+     65,
+     60,
+     55,
+     60,
+     55,
+     50,
+     40
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100,
+     95
+    ],
+    "A": [
+     75,
+     75,
+     75,
+     70,
+     70,
+     70,
+     70,
+     70,
+     65,
+     65,
+     65,
+     65,
+     60,
+     50
+    ],
+    "first_hour_A": 75,
+    "daily_RHE": 9.4
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "6m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     85,
+     80,
+     70
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     70,
+     65,
+     70,
+     65,
+     65,
+     60,
+     55,
+     60,
+     55,
+     50,
+     40
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100,
+     95
+    ],
+    "A": [
+     75,
+     75,
+     75,
+     70,
+     70,
+     70,
+     70,
+     70,
+     65,
+     65,
+     65,
+     65,
+     60,
+     50
+    ],
+    "first_hour_A": 75,
+    "daily_RHE": 9.3
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "12m",
+    "R": [
+     100,
+     100,
+     100,
+     100,
+     100,
+     95,
+     95,
+     95,
+     90,
+     90,
+     90,
+     85,
+     80,
+     70
+    ],
+    "R_low": [
+     100,
+     90,
+     80,
+     70,
+     65,
+     70,
+     65,
+     65,
+     60,
+     55,
+     60,
+     55,
+     50,
+     40
+    ],
+    "R_high": [
+     100,
+     110,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     105,
+     100,
+     95
+    ],
+    "A": [
+     75,
+     75,
+     70,
+     70,
+     70,
+     65,
+     70,
+     70,
+     65,
+     65,
+     65,
+     65,
+     55,
+     50
+    ],
+    "first_hour_A": 75,
+    "daily_RHE": 9.3
+   }
+  ],
+  "thresholds": [
+   {
+    "scenario": "S1",
+    "timepoint": "wk1-2",
+    "first_hour_R_le_80": "Pooled median: not within 14 h. Sweep 5-95%: h4 to not within 14 h; not reached in 52% of sweep. By form (median): linear h13 (44% never), convex not within 14 h (68% never), hinge not within 14 h (66% never), saturating h6 (32% never). Sustained envelope (breaks and dip removed) <=80: median not within 14 h, 5th pct h5, never in 62%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 96% of sweep (by form: linear 97%, convex 99%, hinge 98%, saturating 88%); fewer than 5% of samples reach it by h14.",
+    "note": "The first <=80 crossing is a transient dip in 79% of crossings (pre-break load or the post-lunch hour, recovered after the next meal break). Ackerman-consistent subset (rested decline <=10% by hour 5): median not within 14 h, never 74%. Central-parameter runs: linear h14, convex not within 14 h, hinge not within 14 h, saturating h7. 80 and 50 are convenience cutoffs."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "1m",
+    "first_hour_R_le_80": "Pooled median: not within 14 h. Sweep 5-95%: h4 to not within 14 h; not reached in 54% of sweep. By form (median): linear h14 (46% never), convex not within 14 h (69% never), hinge not within 14 h (67% never), saturating h6 (34% never). Sustained envelope <=80: median not within 14 h, 5th pct h5, never in 64%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 96% of sweep (by form: linear 98%, convex 99%, hinge 99%, saturating 91%); fewer than 5% of samples reach it by h14.",
+    "note": "The first <=80 crossing is a transient dip in 78% of crossings. Ackerman subset: never 75%. Central-parameter runs: linear h14, convex and hinge not within 14 h, saturating h7."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "3m",
+    "first_hour_R_le_80": "Pooled median: not within 14 h. Sweep 5-95%: h4 to not within 14 h; not reached in 57% of sweep. By form (median): linear h14 (48% never), convex not within 14 h (72% never), hinge not within 14 h (69% never), saturating h7 (37% never). Sustained envelope <=80: median not within 14 h, 5th pct h6, never in 66%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 97% of sweep (by form: linear 98%, convex 99%, hinge 99%, saturating 93%); fewer than 5% of samples reach it by h14.",
+    "note": "The first <=80 crossing is a transient dip in 79% of crossings. Ackerman subset: never 77%. Central-parameter runs: linear h14, convex and hinge not within 14 h, saturating h8."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "6m",
+    "first_hour_R_le_80": "Pooled median: not within 14 h. Sweep 5-95%: h4 to not within 14 h; not reached in 57% of sweep. By form (median): linear h14 (49% never), convex not within 14 h (72% never), hinge not within 14 h (70% never), saturating h7 (38% never). Sustained envelope <=80: median not within 14 h, 5th pct h6, never in 66%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 98% of sweep (by form: linear 98%, convex 99%, hinge 99%, saturating 94%).",
+    "note": "The first <=80 crossing is a transient dip in 79% of crossings. Ackerman subset: never 77%. Central-parameter runs: linear h14, convex and hinge not within 14 h, saturating h8."
+   },
+   {
+    "scenario": "S1",
+    "timepoint": "12m",
+    "first_hour_R_le_80": "Pooled median: not within 14 h. Sweep 5-95%: h4 to not within 14 h; not reached in 57% of sweep. By form (median): linear h14 (49% never), convex not within 14 h (72% never), hinge not within 14 h (70% never), saturating h7 (38% never). Sustained envelope <=80: median not within 14 h, 5th pct h6, never in 67%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 98% of sweep (by form: linear 99%, convex 99%, hinge 99%, saturating 94%).",
+    "note": "The first <=80 crossing is a transient dip in 78% of crossings. Ackerman subset: never 77%. Central-parameter runs: linear h14, convex and hinge not within 14 h, saturating h8."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "wk1-2",
+    "first_hour_R_le_80": "Pooled median h14. Sweep 5-95%: h4 to not within 14 h; not reached in 45% of sweep. By form (median): linear h13 (36% never), convex not within 14 h (60% never), hinge not within 14 h (57% never), saturating h5 (27% never). Sustained envelope (breaks and dip removed) <=80: median not within 14 h, 5th pct h5, never in 54%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 93% of sweep (by form: linear 93%, convex 97%, hinge 97%, saturating 83%); 5th percentile of sweep: h14.",
+    "note": "The first <=80 crossing is a transient dip in 75% of crossings. Ackerman-consistent subset: median not within 14 h, never 66%. Central-parameter runs: linear h13, convex and hinge not within 14 h, saturating h5."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "1m",
+    "first_hour_R_le_80": "Pooled median h14. Sweep 5-95%: h4 to not within 14 h; not reached in 42% of sweep. By form (median): linear h13 (32% never), convex not within 14 h (56% never), hinge not within 14 h (54% never), saturating h6 (26% never). Sustained envelope <=80: median not within 14 h, 5th pct h5, never in 52%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 92% of sweep (by form: linear 93%, convex 97%, hinge 97%, saturating 82%); 5th percentile of sweep: h14.",
+    "note": "The first <=80 crossing is a transient dip in 72% of crossings. Ackerman subset: never 62%. Central-parameter runs: linear h13, convex and hinge not within 14 h, saturating h5."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "3m",
+    "first_hour_R_le_80": "Pooled median h14. Sweep 5-95%: h4 to not within 14 h; not reached in 44% of sweep. By form (median): linear h14 (34% never), convex not within 14 h (58% never), hinge not within 14 h (56% never), saturating h6 (28% never). Sustained envelope <=80: median not within 14 h, 5th pct h5, never in 54%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 94% of sweep (by form: linear 94%, convex 98%, hinge 98%, saturating 86%); 5th percentile of sweep: h14.",
+    "note": "The first <=80 crossing is a transient dip in 70% of crossings. Ackerman subset: never 64%. Central-parameter runs: linear h14, convex and hinge not within 14 h, saturating h7. D14 is the main driver: R<=80 is reached in 2% of samples in the bottom D14 quintile and 88% in the top quintile."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "6m",
+    "first_hour_R_le_80": "Pooled median h14. Sweep 5-95%: h4 to not within 14 h; not reached in 45% of sweep. By form (median): linear h14 (35% never), convex not within 14 h (58% never), hinge not within 14 h (57% never), saturating h6 (28% never). Sustained envelope <=80: median not within 14 h, 5th pct h5, never in 54%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 94% of sweep (by form: linear 94%, convex 98%, hinge 98%, saturating 86%); 5th percentile of sweep: h14.",
+    "note": "The first <=80 crossing is a transient dip in 70% of crossings. Ackerman subset: never 64%. Central-parameter runs: linear h14, convex and hinge not within 14 h, saturating h7."
+   },
+   {
+    "scenario": "S2",
+    "timepoint": "12m",
+    "first_hour_R_le_80": "Pooled median h14. Sweep 5-95%: h4 to not within 14 h; not reached in 45% of sweep. By form (median): linear h14 (35% never), convex not within 14 h (58% never), hinge not within 14 h (57% never), saturating h6 (28% never). Sustained envelope <=80: median not within 14 h, 5th pct h5, never in 54%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 94% of sweep (by form: linear 94%, convex 98%, hinge 98%, saturating 86%); 5th percentile of sweep: h14.",
+    "note": "The first <=80 crossing is a transient dip in 70% of crossings. Ackerman subset: never 64%. Central-parameter runs: linear h14, convex and hinge not within 14 h, saturating h7."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "wk1-2",
+    "first_hour_R_le_80": "Pooled median h14. Sweep 5-95%: h3 to not within 14 h; not reached in 33% of sweep. By form (median): linear h12 (24% never), convex h14 (44% never), hinge h14 (44% never), saturating h5 (19% never). Sustained envelope <=80: median h14, 5th pct h5, never in 42%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 88% of sweep (by form: linear 88%, convex 94%, hinge 94%, saturating 75%); 5th percentile of sweep: h13.",
+    "note": "The first <=80 crossing is a transient dip in 65% of crossings. Ackerman subset: median h14, never 50%. Central-parameter runs: linear h13, convex h14, hinge h14, saturating h5. Hours 13-14 cross 80 as a sustained decline (late wake of ~16 h plus ~2 h chronic shortfall)."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "1m",
+    "first_hour_R_le_80": "Pooled median h13. Sweep 5-95%: h3 to not within 14 h; not reached in 26% of sweep. By form (median): linear h12 (18% never), convex h14 (35% never), hinge h14 (36% never), saturating h5 (15% never). Sustained envelope <=80: median h14, 5th pct h5, never in 34%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 85% of sweep (by form: linear 85%, convex 92%, hinge 91%, saturating 71%); 5th percentile of sweep: h13.",
+    "note": "The first <=80 crossing is a transient dip in 60% of crossings. Ackerman subset: median h14, never 39%. Central-parameter runs: linear h13, convex h14, hinge h14, saturating h5."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "3m",
+    "first_hour_R_le_80": "Pooled median h13. Sweep 5-95%: h3 to not within 14 h; not reached in 27% of sweep. By form (median): linear h13 (19% never), convex h14 (36% never), hinge h14 (38% never), saturating h5 (16% never). Sustained envelope <=80: median h14, 5th pct h5, never in 36%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 87% of sweep (by form: linear 87%, convex 94%, hinge 93%, saturating 74%); 5th percentile of sweep: h13.",
+    "note": "The first <=80 crossing is a transient dip in 59% of crossings. Ackerman subset: median h14, never 41%. Central-parameter runs: linear h13, convex h14, hinge h14, saturating h5."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "6m",
+    "first_hour_R_le_80": "Pooled median h13. Sweep 5-95%: h3 to not within 14 h; not reached in 27% of sweep. By form (median): linear h13 (19% never), convex h14 (36% never), hinge h14 (38% never), saturating h5 (16% never). Sustained envelope <=80: median h14, 5th pct h5, never in 36%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 87% of sweep (by form: linear 87%, convex 94%, hinge 93%, saturating 74%); 5th percentile of sweep: h13.",
+    "note": "The first <=80 crossing is a transient dip in 58% of crossings. Ackerman subset: median h14, never 41%. Central-parameter runs: linear h13, convex h14, hinge h14, saturating h5."
+   },
+   {
+    "scenario": "S3",
+    "timepoint": "12m",
+    "first_hour_R_le_80": "Pooled median h13. Sweep 5-95%: h3 to not within 14 h; not reached in 27% of sweep. By form (median): linear h13 (19% never), convex h14 (36% never), hinge h14 (38% never), saturating h5 (16% never). Sustained envelope <=80: median h14, 5th pct h5, never in 36%.",
+    "first_hour_R_le_50": "Not reached within 14 h in 87% of sweep (by form: linear 87%, convex 94%, hinge 93%, saturating 74%); 5th percentile of sweep: h13.",
+    "note": "The first <=80 crossing is a transient dip in 58% of crossings. Ackerman subset: median h14, never 41%. Central-parameter runs: linear h13, convex h14, hinge h14, saturating h5."
+   }
+  ],
+  "schedule_comparison": [
+   {
+    "framework": "prompt1",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8.3,
+    "leisure_h": 4.61,
+    "annual_RHE": 2614,
+    "annual_nominal_hours": 2712,
+    "note": "S2 base (life 2.5 h; at 14 h, TIB 7.5 h). Freed time goes to sleep up to 8.3 h actual, then to leisure. RHE sweep 5-95%: 2160-2803. S1: 2614 (sleep 8.3 h, leisure 5.2 h). S3: 2528 (sleep 8.3 h, leisure 3.8 h). S1 and S2 are identical at <=10 h because the leisure effect saturates at 2 h/day."
+   },
+   {
+    "framework": "prompt1",
+    "hours": 10,
+    "feasible": true,
+    "actual_sleep_h": 8.3,
+    "leisure_h": 2.61,
+    "annual_RHE": 3146,
+    "annual_nominal_hours": 3390,
+    "note": "S2 base. RHE sweep 5-95%: 2520-3431. S1: 3146 (sleep 8.3 h, leisure 3.2 h). S3: 3041 (sleep 8.3 h, leisure 1.8 h)."
+   },
+   {
+    "framework": "prompt1",
+    "hours": 12,
+    "feasible": true,
+    "actual_sleep_h": 8.3,
+    "leisure_h": 0.61,
+    "annual_RHE": 3518,
+    "annual_nominal_hours": 4068,
+    "note": "S2 base. RHE sweep 5-95%: 2763-3978. S1: 3559 (sleep 8.3 h, leisure 1.2 h). S3: 3344 (sleep 8.1 h, leisure 0 h)."
+   },
+   {
+    "framework": "prompt1",
+    "hours": 14,
+    "feasible": true,
+    "actual_sleep_h": 7,
+    "leisure_h": 0,
+    "annual_RHE": 3497,
+    "annual_nominal_hours": 4746,
+    "note": "S2 base. RHE sweep 5-95%: 2537-4202. S1: 3663 (sleep 7.6 h). S3: 3187 (sleep 6.3 h, irregular). Supplementary prompt-1 H grid 8-14: the per-sample RHE-maximising H has median 13 h for S1 (5-95%: 12-14; 14 h in 45%), 13 h for S2 (12-14; 14 h in 21%), 12 h for S3 (11-14)."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 3.1,
+    "annual_RHE": 2575,
+    "annual_nominal_hours": 2712,
+    "note": "Feasible; leftover free leisure 3.10 h/day. RHE sweep 5-95%: 2120-2777. Exercise and meditation are kept but have no modelled learning benefit."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 10,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 1.1,
+    "annual_RHE": 3074,
+    "annual_nominal_hours": 3390,
+    "note": "Feasible; leftover free leisure 1.10 h/day. RHE sweep 5-95%: 2438-3378."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 12,
+    "feasible": false,
+    "actual_sleep_h": 7.16,
+    "leisure_h": 0,
+    "annual_RHE": 3248,
+    "annual_nominal_hours": 4068,
+    "note": "INFEASIBLE under prompt-2 (8.0 h actual sleep, life 4.3 h; max 11.1 h). The conditional variant shown breaks the SLEEP condition: TIB cut to 7.70 h, giving 7.16 h actual sleep. RHE 5-95%: 2437-3750. Alternative variant that drops exercise and meditation first keeps 8.0 h sleep: RHE 3462. That figure is an upper bound because the model gives exercise and meditation no learning benefit."
+   },
+   {
+    "framework": "prompt2_base",
+    "hours": 14,
+    "feasible": false,
+    "actual_sleep_h": 5.3,
+    "leisure_h": 0,
+    "annual_RHE": 2963,
+    "annual_nominal_hours": 4746,
+    "note": "INFEASIBLE by 2.9 h/day. The conditional variant breaks the SLEEP condition: TIB 5.70 h, giving 5.30 h actual sleep. RHE 5-95%: 1973-3744. Alternative variant (drop exercise and meditation, then cut sleep): sleep 6.59 h, RHE 3371 (upper bound)."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 4.65,
+    "annual_RHE": 2575,
+    "annual_nominal_hours": 2712,
+    "note": "Feasible; leftover free leisure 4.65 h/day. RHE sweep 5-95%: 2120-2777."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 10,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 2.65,
+    "annual_RHE": 3102,
+    "annual_nominal_hours": 3390,
+    "note": "Feasible; leftover free leisure 2.65 h/day. RHE sweep 5-95%: 2453-3400."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 12,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 0.65,
+    "annual_RHE": 3472,
+    "annual_nominal_hours": 4068,
+    "note": "Feasible; leftover free leisure 0.65 h/day. RHE sweep 5-95%: 2696-3942."
+   },
+   {
+    "framework": "prompt2_tight",
+    "hours": 14,
+    "feasible": false,
+    "actual_sleep_h": 6.72,
+    "leisure_h": 0,
+    "annual_RHE": 3407,
+    "annual_nominal_hours": 4746,
+    "note": "INFEASIBLE under prompt-2 (life 2.9 h; max 12.65 h). The conditional variant breaks the SLEEP condition: TIB 7.07 h, giving 6.72 h actual sleep. RHE 5-95%: 2444-4131. Alternative variant (drop exercise and meditation, then cut sleep): sleep 7.76 h, RHE 3704 (upper bound)."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 8,
+    "feasible": true,
+    "actual_sleep_h": 8,
+    "leisure_h": 1,
+    "annual_RHE": 2563,
+    "annual_nominal_hours": 2712,
+    "note": "Feasible; leftover free leisure 1.00 h/day. RHE sweep 5-95%: 2106-2772."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 10,
+    "feasible": false,
+    "actual_sleep_h": 7.1,
+    "leisure_h": 0,
+    "annual_RHE": 2871,
+    "annual_nominal_hours": 3390,
+    "note": "INFEASIBLE (life 6.1 h; max 9.0 h). The conditional variant breaks SLEEP: TIB 7.89 h, giving 7.10 h actual sleep. RHE 5-95%: 2216-3220. Alternative variant (drop exercise and meditation): 8.0 h sleep kept, RHE 3060 (upper bound)."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 12,
+    "feasible": false,
+    "actual_sleep_h": 5.3,
+    "leisure_h": 0,
+    "annual_RHE": 2730,
+    "annual_nominal_hours": 4068,
+    "note": "INFEASIBLE. The conditional variant breaks SLEEP: 5.30 h actual sleep. RHE 5-95%: 1866-3347. Alternative variant (drop exercise and meditation, then cut sleep): sleep 6.82 h, RHE 3161 (upper bound)."
+   },
+   {
+    "framework": "prompt2_generous",
+    "hours": 14,
+    "feasible": false,
+    "actual_sleep_h": 3.5,
+    "leisure_h": 0,
+    "annual_RHE": 2359,
+    "annual_nominal_hours": 4746,
+    "note": "INFEASIBLE by 5 h/day. The conditional variant breaks SLEEP: 3.50 h actual sleep, far outside the model's calibrated range (linear debt response is probably optimistic here). RHE 5-95%: 1436-3303. Alternative variant (drop exercise and meditation, then cut sleep): sleep 5.02 h, RHE 2878."
+   }
+  ],
+  "increments": [
+   {
+    "framework": "prompt1_S1",
+    "step": "8->10",
+    "block_contribution_RHE": 607,
+    "spillover_RHE": -63,
+    "net_RHE": 531,
+    "note": "Sweep medians. Block 5-95%: 434..685; spillover -142..-18; net 351..651. Net<0 in 0% of sweep (every form). Per added nominal hour: block 0.90, net 0.78 RHE. Sleep stays at 8.3 h; spillover comes from multi-day load only."
+   },
+   {
+    "framework": "prompt1_S1",
+    "step": "10->12",
+    "block_contribution_RHE": 561,
+    "spillover_RHE": -125,
+    "net_RHE": 419,
+    "note": "Block 393..661; spillover -242..-40; net 228..591. Net<0 in 0%. Per added hour: block 0.83, net 0.62 RHE."
+   },
+   {
+    "framework": "prompt1_S1",
+    "step": "12->14",
+    "block_contribution_RHE": 472,
+    "spillover_RHE": -340,
+    "net_RHE": 119,
+    "note": "Block 305..602; spillover -553..-174 (sleep 8.3 -> 7.6 h, leisure 1.2 -> 0 h, late wake); net -173..391. Net<0 in 26% of sweep (Ackerman subset 18%; by form lin/cvx/hinge/sat 28%/20%/20%/36%). Per added hour: block 0.70, net 0.18 RHE."
+   },
+   {
+    "framework": "prompt1_S2",
+    "step": "8->10",
+    "block_contribution_RHE": 607,
+    "spillover_RHE": -63,
+    "net_RHE": 531,
+    "note": "Block 434..685; spillover -142..-18; net 351..651. Net<0 in 0%. Per added hour: block 0.90, net 0.78 RHE."
+   },
+   {
+    "framework": "prompt1_S2",
+    "step": "10->12",
+    "block_contribution_RHE": 555,
+    "spillover_RHE": -153,
+    "net_RHE": 382,
+    "note": "Block 388..656; spillover -298..-47; net 173..576. Net<0 in 0%. Per added hour: block 0.82, net 0.56 RHE."
+   },
+   {
+    "framework": "prompt1_S2",
+    "step": "12->14",
+    "block_contribution_RHE": 437,
+    "spillover_RHE": -447,
+    "net_RHE": -14,
+    "note": "Block 270..568; spillover -642..-248 (sleep 8.3 -> 7.0 h, leisure 0.6 -> 0 h); net -313..280. Net<0 in 54% of sweep (Ackerman subset 42%; by form lin/cvx/hinge/sat 57%/46%/43%/68%). The sign is undetermined. It turns negative with higher c_max, beta_s, D14, kappa or sleep need N: net<0 in 24% vs 85% of samples in the bottom vs top c_max quintile, and 26% vs 85% for beta_s. Per added hour: block 0.64, net -0.02 RHE."
+   },
+   {
+    "framework": "prompt1_S3",
+    "step": "8->10",
+    "block_contribution_RHE": 586,
+    "spillover_RHE": -68,
+    "net_RHE": 507,
+    "note": "Block 421..666; spillover -143..-19; net 335..627. Net<0 in 0%. Per added hour: block 0.86, net 0.75 RHE."
+   },
+   {
+    "framework": "prompt1_S3",
+    "step": "10->12",
+    "block_contribution_RHE": 526,
+    "spillover_RHE": -191,
+    "net_RHE": 318,
+    "note": "Block 365..630; spillover -362..-74; net 83..525. Net<0 in 1%. Per added hour: block 0.78, net 0.47 RHE."
+   },
+   {
+    "framework": "prompt1_S3",
+    "step": "12->14",
+    "block_contribution_RHE": 374,
+    "spillover_RHE": -517,
+    "net_RHE": -148,
+    "note": "Block 215..504; spillover -727..-291 (sleep 8.1 -> 6.3 h, irregular); net -457..166. Net<0 in 76% of sweep (Ackerman subset 68%; by form 79%/70%/68%/87%). Per added hour: block 0.55, net -0.22 RHE."
+   },
+   {
+    "framework": "prompt2_tight",
+    "step": "8->10",
+    "block_contribution_RHE": 598,
+    "spillover_RHE": -62,
+    "net_RHE": 522,
+    "note": "Both feasible. Block 422..678; spillover -140..-18; net 340..643. Net<0 in 0%. Per added hour: block 0.88, net 0.77 RHE."
+   },
+   {
+    "framework": "prompt2_tight",
+    "step": "10->12",
+    "block_contribution_RHE": 547,
+    "spillover_RHE": -149,
+    "net_RHE": 378,
+    "note": "Both feasible; the time comes from leisure. Block 376..648; spillover -290..-46; net 172..570. Net<0 in 0%. Per added hour: block 0.81, net 0.56 RHE."
+   },
+   {
+    "framework": "prompt2_tight (H2 conditional: sleep_cut)",
+    "step": "12->14",
+    "block_contribution_RHE": 412,
+    "spillover_RHE": -458,
+    "net_RHE": -53,
+    "note": "14 h is infeasible; this breaks the 8 h sleep condition (6.72 h). Block 250..544; spillover -643..-261; net -347..239. Net<0 in 61% (Ackerman subset 50%; by form 64%/55%/50%/74%). Per added hour: block 0.61, net -0.08 RHE."
+   },
+   {
+    "framework": "prompt2_base",
+    "step": "8->10",
+    "block_contribution_RHE": 593,
+    "spillover_RHE": -86,
+    "net_RHE": 493,
+    "note": "Both feasible. Block 418..674; spillover -164..-25; net 315..629. Net<0 in 0%. Per added hour: block 0.87, net 0.73 RHE."
+   },
+   {
+    "framework": "prompt2_base (H2 conditional: sleep_cut)",
+    "step": "10->12",
+    "block_contribution_RHE": 504,
+    "spillover_RHE": -312,
+    "net_RHE": 177,
+    "note": "12 h is infeasible (sleep cut to 7.16 h). Block 334..613; spillover -462..-172; net -69..411. Net<0 in 12% (Ackerman subset 4%; by form 13%/6%/4%/25%). Per added hour: block 0.74, net 0.26 RHE. The feasible part of this step (10 -> 11.0 h) is positive in >99% of the sweep."
+   },
+   {
+    "framework": "prompt2_base (H2 conditional: sleep_cut)",
+    "step": "12->14",
+    "block_contribution_RHE": 299,
+    "spillover_RHE": -565,
+    "net_RHE": -273,
+    "note": "Both conditional (sleep 7.16 -> 5.30 h). Block 156..457; spillover -765..-343; net -556..62. Net<0 in 90% (Ackerman subset 86%; by form 92%/86%/87%/95%). Per added hour: block 0.44, net -0.40 RHE. The main driver is beta_s (Spearman -0.71)."
+   },
+   {
+    "framework": "prompt2_generous (H2 conditional: sleep_cut)",
+    "step": "8->10",
+    "block_contribution_RHE": 549,
+    "spillover_RHE": -241,
+    "net_RHE": 297,
+    "note": "10 h is infeasible (sleep 7.10 h). Block 373..640; spillover -347..-130; net 68..488. Net<0 in 2%. Per added hour: block 0.81, net 0.44 RHE."
+   },
+   {
+    "framework": "prompt2_generous (H2 conditional: sleep_cut)",
+    "step": "10->12",
+    "block_contribution_RHE": 350,
+    "spillover_RHE": -471,
+    "net_RHE": -130,
+    "note": "Sleep 7.10 -> 5.30 h. Block 195..499; spillover -650..-277; net -397..183. Net<0 in 74% (by form 78%/67%/64%/86%). Per added hour: block 0.52, net -0.19 RHE."
+   },
+   {
+    "framework": "prompt2_generous (H2 conditional: sleep_cut)",
+    "step": "12->14",
+    "block_contribution_RHE": 178,
+    "spillover_RHE": -512,
+    "net_RHE": -338,
+    "note": "Sleep 5.30 -> 3.50 h, an extreme extrapolation. Block 62..375; spillover -678..-330; net -560..-9. Net<0 in 96%. Per added hour: block 0.26, net -0.50 RHE."
+   }
+  ],
+  "optimization": [
+   {
+    "scenario": "A",
+    "daily_hours": 11,
+    "full_rest_days_per_14": 1,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 6,
+    "annual_RHE": 3250,
+    "annual_nominal_hours": 3729,
+    "near_optimal_band": "Within 2% of best (sweep median): 11 h, 1 rest/14, 0 half-days (100%); 11 h, 1 rest/14, 1 half-day (98.1%). Just outside: 10.5 h/1 rest/0 half (97.5%); 11 h/1 rest/2 half (95.5%); 11 h/2 rest (94.7%). Per sample, 11 h/r1/p0 is within 2% of that sample's own optimum in 100% of the sweep, 11 h/r1/p1 in 41%, 10.5 h/r1/p0 in 24%.",
+    "note": "Base budget (0.5 h grid; exact maximum 11.1 h). The per-sample optimum H sits at the feasibility maximum in 99% of the sweep, 1 rest/14 is chosen in 100%, and no half-day in 100%. This holds for every within-day form (median optimum 11/11/11/11 h). RHE 5-95%: 2559-3653. The optimum is set by the time budget, not by learning parameters. Break-even (what the model would need for less study to win): 0.5 h more leisure must raise learning per hour by >=2.9% (0.9-4.1%); 1 h more by >=6.1% (2.5-8.7%); a second rest day per 14 by >=6.1% (3.7-7.7%) on every other day; a half-day by >=2.3%. Structural stress test (c_max 0.5, a rest day erases all load, tau_C 14 d, H_s 4 h): weekly rest still loses 1.3% against 1/14. Conditional, infeasible extension that breaks the 8 h sleep condition: 11.5 h (sleep 7.6 h) gives +0.6%, 12 h (7.2 h) +0%, 13 h -3%, 14 h -9%. Breaking sleep buys essentially nothing."
+   },
+   {
+    "scenario": "B60",
+    "daily_hours": 10,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 66,
+    "annual_RHE": 2888,
+    "annual_nominal_hours": 3130,
+    "near_optimal_band": "Only 10 h, 2 rest/14 (weekly), 0 half-days lies within 2%. Next: 10 h/2 rest/1 half (96.7%); 9.5 h/2 rest/0 half (96.2%).",
+    "note": "Base budget. The per-sample optimum is at the maximum H allowed by the floor in 100% of the sweep, with the minimum allowed rest (weekly) in 100%. Same for every form. RHE 5-95%: 2296-3144. Cost against scenario A: 12% of annual RHE (5-95%: 8-15%). About half of that comes from the weekly rest day (~6%) and half from the 1 h lower daily study."
+   },
+   {
+    "scenario": "B90",
+    "daily_hours": 9.5,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 96,
+    "annual_RHE": 2777,
+    "annual_nominal_hours": 2974,
+    "near_optimal_band": "Only 9.5 h, 2 rest/14, 0 half-days lies within 2%. Next: 9.5 h/2 rest/1 half (96.5%); 9 h/2 rest/0 half (95.8%).",
+    "note": "Base budget. The optimum sits at the constraint boundary in 100% of the sweep, for every form. RHE 5-95%: 2228-3011. Cost against scenario A: 15% (10-18%)."
+   },
+   {
+    "scenario": "B120",
+    "daily_hours": 9,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 126,
+    "annual_RHE": 2659,
+    "annual_nominal_hours": 2817,
+    "near_optimal_band": "Only 9 h, 2 rest/14, 0 half-days lies within 2%. Next: 9 h/2 rest/1 half (96.4%); 8.5 h/2 rest/0 half (95.1%).",
+    "note": "Base budget. The optimum sits at the constraint boundary in 100% of the sweep. RHE 5-95%: 2154-2871. Cost against scenario A: 18% (13-22%). The model gives leisure beyond 2 h/day no further recovery value (the effect saturates)."
+   },
+   {
+    "scenario": "A_tightbudget",
+    "daily_hours": 12.5,
+    "full_rest_days_per_14": 1,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 9,
+    "annual_RHE": 3530,
+    "annual_nominal_hours": 4238,
+    "near_optimal_band": "12.5 h/1 rest/0 half (100%); 12.5 h/1 rest/1 half (98.6%); 12 h/1 rest/0 half (98.4%). Just outside: 12 h/1 rest/1 half (96.7%).",
+    "note": "Tight budget (max 12.65 h). The optimum is at the maximum in 92% of the sweep (5-95%: 12-12.5 h), with 1 rest/14 in 100%. Near the maximum the marginal half hour is worth only ~2% here, so the tail of the sweep (high D14, c_max, beta_s) begins to prefer 12 h. RHE 5-95%: 2724-4055."
+   },
+   {
+    "scenario": "A_generousbudget",
+    "daily_hours": 9,
+    "full_rest_days_per_14": 1,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 0,
+    "annual_RHE": 2808,
+    "annual_nominal_hours": 3051,
+    "note": "Generous budget (max 9.0 h). The optimum is at the maximum in 100% of the sweep, with 1 rest/14. RHE 5-95%: 2265-3071.",
+    "near_optimal_band": "Only 9 h/1 rest/0 half lies within 2%. Next: 9 h/1 rest/1 half (97.2%); 8.5 h/1 rest/0 half (95.9%)."
+   },
+   {
+    "scenario": "B90_tightbudget",
+    "daily_hours": 11,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 99,
+    "annual_RHE": 3127,
+    "annual_nominal_hours": 3443,
+    "near_optimal_band": "Only 11 h/2 rest/0 half lies within 2%. Next: 11 h/2 rest/1 half (96.9%); 10.5 h/2 rest/0 half (96.8%).",
+    "note": "Tight budget. The optimum sits at the constraint boundary in 100% of the sweep. Cost against tight scenario A: 12% (6-17%)."
+   },
+   {
+    "scenario": "B90_generousbudget",
+    "daily_hours": 7.5,
+    "full_rest_days_per_14": 2,
+    "partial_rest_days_per_14": 0,
+    "leisure_min": 90,
+    "annual_RHE": 2256,
+    "annual_nominal_hours": 2348,
+    "near_optimal_band": "Only 7.5 h/2 rest/0 half lies within 2%. Next: 7.5 h/2 rest/1 half (96.3%); 7 h/2 rest/0 half (93.9%).",
+    "note": "Generous budget. The optimum sits at the constraint boundary in 100% of the sweep. Cost against generous scenario A: 20% (16-22%)."
+   }
+  ],
+  "sensitivity": [
+   {
+    "assumption": "Within-day decline form (the evidence cannot distinguish forms)",
+    "variation": "linear vs convex (p 1.5-3) vs hinge (onset 3-8 h) vs saturating (c 0.15-0.5), each normalised to the same D14",
+    "effect": "Moves the <=80 hour (S2, 3m, median) from h6 (saturating) to h14 (linear) to 'not within 14 h' (convex, hinge; 56-58% never). Share of samples with 12->14 net<0 in prompt-1 S2: 43% (hinge), 46% (convex), 57% (linear), 68% (saturating). Optimal daily hours under prompt-2: unchanged (11 h for every form).",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "D14: size of the within-day decline",
+    "variation": "0.05-0.70",
+    "effect": "Strongest driver of the <=80 hour (Spearman -0.67). R<=80 is reached within 14 h in 2% of samples in the bottom quintile and 88% in the top quintile. R<=50 is reached only when D14 is high (26% of top-quintile samples, 0% of bottom). 12->14 net (prompt-1 S2): net<0 in 32% vs 72% of bottom- vs top-quintile samples.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "phi: transient share of within-day load (reset by meal breaks)",
+    "variation": "0.10-0.70",
+    "effect": "R<=80 reached in 73% (low phi) vs 35% (high phi) of samples (S2, 3m). Also sets how much of the late-day dip counts as recoverable. Negligible effect on the annual questions.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "beta_s: start-of-day learning loss per hour of chronic sleep shortfall",
+    "variation": "0.02-0.09 per h",
+    "effect": "Main driver of lifestyle nets. 12->14 net<0 (prompt-1 S2) in 26% vs 85% of bottom- vs top-quintile samples. Prompt-2 base 12->14 conditional: Spearman -0.71, but negative in 90% overall. No effect on R.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "c_max: multi-day load at long daily hours",
+    "variation": "0-0.30 (stress test 0.5)",
+    "effect": "12->14 net<0 in 24% vs 85% of bottom- vs top-quintile samples (Spearman -0.52). Prompt-1 lifestyle optimum H: Spearman -0.46 (mean optimum 13.3 vs 12.5 h). Does not change the prompt-2 optimum or the rest-day choice, even at 0.5 with a full rest-day reset.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "kappa, N, H_s, m_slow (secondary lifestyle drivers)",
+    "variation": "kappa 0-0.25; N 8.0-8.9 h; H_s 4-9 h; m_slow 0-0.08",
+    "effect": "Each shifts the 12->14 negative share by 13-26 points between bottom and top quintiles (kappa 35% vs 61%; N 41% vs 63%; H_s 46% vs 59%; m_slow 46% vs 62%). None alone decides the sign.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "gamma_w: late-wake penalty, and W0 = 16 h",
+    "variation": "0-0.12 per h",
+    "effect": "R<=80 reached in 46% vs 66% of samples (S2, 3m). Second driver of the prompt-2 12->14 conditional (Spearman -0.33). Matters most for S3 hours 13-14.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Recovery value of leisure and rest days (lam_L, rho_rest, tau_C, c_max)",
+    "variation": "In-sweep ranges plus a structural stress test (c_max 0.5, rho_rest 1.0, tau_C 14 d, H_s 4 h)",
+    "effect": "Never flips the prompt-2 optimum (max feasible hours, 1 rest/14) within the sweep. Under the stress test, weekly rest still loses 1.3%. The result is structural: a second rest day would have to raise learning per hour by >=6% (3.7-7.7%) on every other study day, and 1 h of leisure by >=6% (2.5-8.7%). Nothing in the digest measures either effect on learning.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Time budget for prompt-2 (tight / base / generous)",
+    "variation": "life 2.9 / 4.3 / 6.1 h",
+    "effect": "Optimal daily hours in scenario A are 12.5 / 11.0 / 9.0 h, which are the feasibility maxima. The budget, not any learning parameter, sets the optimal hours.",
+    "flips_conclusion": true
+   },
+   {
+    "assumption": "Allocation floor v_low (switching to review when tired)",
+    "variation": "0.35-0.85, plus a structural v_low = 0",
+    "effect": "Little effect on <=80 (reached in 56% of S2 samples either way). R<=50 reached in 9% (bottom quintile) vs 0% (top); with v_low = 0, 9% overall instead of 6%.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Ackerman-consistency filter (rested decline <=10% by hour 5)",
+    "variation": "Full sweep vs the 62% of samples that pass (keeps 39% linear, 97% convex, 100% hinge, 15% saturating)",
+    "effect": "S2 3m median R at h14 rises from 78 to 85. The share reaching R<=80 falls from 56% to 36%. The 12->14 prompt-1 S2 negative share falls from 54% to 42%. Direction unchanged; the sign stays ambiguous.",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Prompt-1 sleep target for freed time",
+    "variation": "8.2 / 8.3 / 8.5 h actual",
+    "effect": "Central-run 12->14 net moves by <=20 RHE (e.g. linear +68 / +56 / +48). The saturating central run crosses zero (+6 / -8 / -19).",
+    "flips_conclusion": false
+   },
+   {
+    "assumption": "Adaptation (alpha_ad) and slow load (m_slow): early vs late year",
+    "variation": "alpha_ad 0-0.25; m_slow 0-0.08",
+    "effect": "R at every hour differs by <=5 points between wk1-2 and 12m. A(1) falls ~5 points over the first 2-4 weeks (debt and load reach equilibrium), then 0-2 points by 12m. No conclusion depends on the timepoint.",
+    "flips_conclusion": false
+   }
+  ],
+  "robust_conclusions": [
+   "Hours 1-5 are roughly equal (median R 100, hours 2-4 sometimes >100 from warm-up). Most of any within-day decline falls in the second half of the day. This holds for every form except the front-loaded saturating one, which Ackerman 2009/2010 argues against.",
+   "R <= 50% within a 14 h day is rare in this sweep: never reached in 96-98% of samples (S1), 92-94% (S2) and 85-88% (S3). It needs a large decline (D14 >= ~0.55) plus a front-loaded or linear form, and it stays rare even with no task-switching floor (9%). This is conditional on D14 <= 0.70.",
+   "The first time R touches 80% is usually a transient dip, recovered after the next meal break: 58-79% of crossings, either the post-lunch hour (h6) or the hour before a break. The sustained envelope reaches 80% later (median not within 14 h for S1/S2, h14 for S3).",
+   "Scenario ordering: A (state relative to a rested twin) is S1 > S2 > S3 at every hour and timepoint. First-hour A medians at 3-12 months are ~80-85 / 80 / 75, and daily RHE at 14 h is ~10.7 / 10.2 / 9.3. The gap comes from start-of-day sleep debt and load, not from the within-day curve.",
+   "No linear accumulation over the year. A drops ~5 points during the first 2-4 weeks as sleep debt and multi-day load reach equilibrium, then changes by <=2 points to 12 months. R curves are essentially identical from wk1-2 to 12m. The evidence does not support larger early-vs-late differences.",
+   "When sleep is protected, going from 8 to 10 and from 10 to 12 nominal h/day is net positive in essentially all of the sweep (prompt-1 S1/S2/S3, prompt-2 tight). Net value per added hour is ~0.73-0.78 RHE (8->10) and ~0.47-0.62 RHE (10->12).",
+   "The added hours' own block contribution is always positive (0.44-0.90 RHE per added nominal hour). Whether a longer day pays is decided entirely by the spillover on the other hours and days (sleep, load, late wake), which grows steeply once sleep is cut.",
+   "Under prompt-2 conditions, schedules that exceed the feasible maximum by cutting sleep lose. 12->14 with sleep cut is negative in 90% (base), 61% (tight) and 96% (generous) of the sweep. Breaking the 8 h sleep condition in the base budget gains <=0.6% at 11.5-12 h and loses 3-9% at 13-14 h.",
+   "Under prompt-2 conditions the RHE-maximising plan is the feasibility maximum (base 11.0 h in the 0.5 h grid, 1 rest day per 14, no half-days) in >99% of the sweep and for every within-day form. This is robust within the model's structure (see fragile conclusions for why it is structural).",
+   "The cost of the scenario-B constraints is fairly stable: a 60/90/120-min leisure floor plus weekly rest costs ~12% / 15% / 18% of annual RHE against scenario A (base budget; sweep 8-15% / 10-18% / 13-22%). The weekly rest day accounts for ~6 points of that."
+  ],
+  "fragile_conclusions": [
+   "The hour at which R first falls to <=80% cannot be pinned down; it is an artefact of the chosen functional form. The pooled median (h14 for S2, h13-14 for S3, not within 14 h for S1) hides a range from h3-4 (5th percentile, saturating) to never (convex and hinge; 56-72% never). The evidence cannot distinguish linear, convex and hinge, and only weakly argues against saturating (Ackerman).",
+   "The sign of the 12->14 lifestyle increment under prompt-1 is undetermined. It is net<0 in 26% (S1), 54% (S2, median about -14 RHE, i.e. about zero) and 76% (S3) of the sweep. It depends on how much sleep the extra 2 h displace (0.7 h in S1, 1.3 h in S2, 1.8 h in S3) and on beta_s, c_max, D14, kappa and sleep need. It turns positive if sleep costs little learning (beta_s <= ~0.035), multi-day load is small, and the decline is late or convex.",
+   "The prompt-1 lifestyle optimum (sleep protected up to 8.3 h) is ~13 h/day (5-95%: 12-14) for S1/S2 and 12 h for S3. It is driven by the same poorly constrained parameters. Pencavel's factory data (output peaks at ~63 h/wk, about 10.5 h/day over 6 days) would imply a lower optimum, if factory work transferred to study.",
+   "Optimal daily hours under prompt-2 are set by the time budget (tight 12.5 / base 11.0 / generous 9.0 h), not by learning evidence. Change the life-component durations and the optimum moves one-for-one.",
+   "'1 rest day per 14 and no half-days is optimal' is a structural result. The model has only state-type recovery (sleep debt, multi-day load), and within any plausible range that recovery cannot pay back a lost study day (break-even: >=6% gain in learning per hour on every other day). It would flip if rest or leisure have large learning effects that no digest source measures, or if dropout/burnout risk and well-being (outside expected RHE) are counted.",
+   "The absolute annual RHE levels (e.g. 3250 at the base optimum, 5-95% 2559-3653) depend on indirect start-of-day penalties (beta_s, c_max) and on the arbitrary equal weighting of forms. Compare schedules within one sample, not levels across models.",
+   "The 'drop exercise and meditation' conditional variants look better than the sleep-cut variants only because exercise and meditation have no modelled learning benefit. Treat them as upper bounds."
+  ],
+  "self_critique": "1. The within-day magnitude is assumed, not measured. D14 (0.05-0.70) and the four shapes carry every <=80/<=50 result, and nothing in the digest measures learning per hour after ~6 h. Ackerman (test-taking, 5 h) is the only direct-ish constraint. The 0.70 upper bound is a judgment call; a wider range would make <=50% more common.\n\n2. Recovery is only state-type. Rest days and leisure act through the sleep-debt and multi-day-load states, whose effects are bounded by c_max x lam_L. That makes 'maximise hours, minimise rest' nearly structural. I report break-even thresholds and a stress test instead of claiming it as evidence-based. The model also leaves out burnout or dropout (a tail risk, not a mean effect), motivation, adherence, and the spacing benefit from spreading study over more days.\n\n3. The sleep-to-learning mapping is linear. beta_s x X is linear in chronic shortfall, calibrated loosely to restriction meta-analyses in SD units. It is probably too optimistic at 3.5-5.3 h sleep (the generous and base 14 h conditional variants) and uncertain at 0.5-1 h shortfall, which is exactly where the 12->14 sign is decided.\n\n4. Two outcomes are left out. Exercise and meditation have no modelled benefit, which biases the 'drop exercise' variants upward. Knowledge-level diminishing returns and content saturation across the year are outside RHE by definition. Within-day content saturation (overlearning, Rohrer & Taylor) is folded into D rather than modelled separately.\n\n5. The e(h) split is decorative. It is a fixed 50/50 decomposition with no effect on any output, because no evidence separates engagement from per-minute efficiency.\n\n6. The sweep samples parameters independently and uniformly; real parameters are probably correlated (e.g. high beta_s with high kappa), which would widen the tails. Pooled medians weight the forms equally, so the 'median <=80 hour' is partly a product of that weighting.\n\n7. The day template is fixed: breaks at 5/14 and 10/14 of the hours, meals as 25% of life, leisure placed after study. Late-wake timing depends on this, and W0 = 16 h is fixed rather than swept.\n\n8. The prompt-1 reallocation adds its own assumption. It assumes freed time really turns into sleep up to 8.3 h. If a student would not sleep more, the spillover of 12->14 shrinks and the sign moves positive.\n\n9. Rounding hides small features. With R and A rounded to 5, the post-lunch dip (~5 points) and the after-dinner recovery (~3-5 points) are only partly visible. Raw values are in outputs/q1_hourly.csv, which also has the sustained envelope and transient gap per hour.\n\n10. Output files. Everything is under /tmp/claude-0/-home-user-effective-tribble/5448cb8b-19ed-5944-80d3-d0d502e1b63c/scratchpad/models/M3_minimal/outputs/ (all 354 schedule budget checks pass: sum = 24 h, leisure >= 0; R(t,1) = 100 is asserted):\n- q1_hourly.csv, q1_thresholds.csv\n- q2_schedules.csv, q2_increments.csv\n- q3_plans.csv, q3_optimum_summary.csv, q3_breakeven.csv, q3_conditional_extension.csv\n- sensitivity_spearman.csv, sensitivity_net12to14_signflip.csv\n- supp_checks.json, oat_checks.json, budget_checks.csv\n- sweep_samples.csv, parameters.json, summary.json"
+ }
+}

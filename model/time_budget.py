@@ -46,6 +46,15 @@ class LifeBudget:
     def non_sleep_non_study(self) -> float:
         return sum(self.items().values())
 
+    def exercise_session(self) -> float:
+        """운동하는 날 하루에 드는 운동 시간(회당 운동 + 준비·이동·샤워 추가분)."""
+        return self.exercise_week / self.exercise_sessions + self.exercise_transition
+
+    def day_life(self, exercise_day: bool) -> float:
+        """운동일/비운동일의 수면·공부 외 시간(분). 7일 평균 대신 실제 그날의 값."""
+        base = self.non_sleep_non_study() - self.exercise_per_day()
+        return base + (self.exercise_session() if exercise_day else 0.0)
+
     def tib_for(self, actual_sleep_h: float) -> float:
         return actual_sleep_h / self.sleep_efficiency
 
@@ -64,9 +73,12 @@ BUDGETS = [
 ]
 
 
-def max_study_hours(b: LifeBudget, actual_sleep_h: float = 8.0, leisure_min: float = 0.0) -> float:
+def max_study_hours(b: LifeBudget, actual_sleep_h: float = 8.0, leisure_min: float = 0.0,
+                    exercise_day: bool | None = None) -> float:
+    """exercise_day=None이면 7일 평균 생활시간, True/False면 운동일/비운동일의 실제 생활시간으로 계산."""
     tib = b.tib_for(actual_sleep_h)
-    return 24.0 - tib - (b.non_sleep_non_study() + leisure_min) / 60.0
+    life = b.non_sleep_non_study() if exercise_day is None else b.day_life(exercise_day)
+    return 24.0 - tib - (life + leisure_min) / 60.0
 
 
 def report() -> str:
@@ -83,6 +95,10 @@ def report() -> str:
     lines.append("| 수면·공부 외 합계(h) | " + " | ".join(f"{b.non_sleep_non_study()/60:.2f}" for b in BUDGETS) + " |")
     lines.append("| 자유 여가 0분일 때 최대 명목 공부(h) | " + " | ".join(f"{max_study_hours(b):.2f}" for b in BUDGETS) + " |")
     lines.append("| 14h 대비 부족분(h) | " + " | ".join(f"{14 - max_study_hours(b):.2f}" for b in BUDGETS) + " |")
+    lines.append("| 운동 1회에 드는 시간(분, 전환 포함) | " + " | ".join(f"{b.exercise_session():.0f}" for b in BUDGETS) + " |")
+    for lm in (0, 60, 90, 120):
+        lines.append(f"| 여가 {lm}분: 운동일 / 비운동일 최대(h) | " + " | ".join(
+            f"{max_study_hours(b, leisure_min=lm, exercise_day=True):.2f} / {max_study_hours(b, leisure_min=lm, exercise_day=False):.2f}" for b in BUDGETS) + " |")
     for lm in (60, 90, 120):
         lines.append(f"| 자유 여가 {lm}분일 때 최대 명목 공부(h) | " + " | ".join(f"{max_study_hours(b, leisure_min=lm):.2f}" for b in BUDGETS) + " |")
     lines.append("")
