@@ -2,6 +2,7 @@ export const meta = {
   name: 'kr-equity-analysis',
   description: 'Per-stock independent industry-specialist and generalist valuations, then base-rate calibration and synthesis into 1/3/5-year TSR scenario sets',
   phases: [
+    { title: 'Price', detail: 'B2: re-verify the 2026-09-28 close where the dossier lacks it' },
     { title: 'Specialist', detail: 'D: industry specialist valuation & scenarios' },
     { title: 'Generalist', detail: 'independent non-industry analyst valuation & scenarios' },
     { title: 'Calibrate', detail: 'H: base-rate calibration and weighted synthesis' },
@@ -139,20 +140,44 @@ ${JSON.stringify(ge)}
 6) optimism_priced_in: 현재 주가에 낙관이 얼마나 반영됐는지 1~5.
 7) 두 분석가 사이의 중요한 의견 차이를 숨기지 말라.`
 
+const PRICE_SCHEMA = {
+  type: 'object',
+  properties: {
+    close_krw: { type: ['number', 'null'] }, close_date: { type: ['string', 'null'] },
+    cross_checked: { type: 'boolean' }, sources: { type: 'array', items: { type: 'string' } }, note: { type: 'string' },
+  },
+  required: ['close_krw', 'close_date', 'cross_checked', 'sources', 'note'],
+}
+
+const priceStage = s => {
+  if (s.P0_date === '2026-09-28') return Promise.resolve({ ...s, price_check: 'dossier already has 2026-09-28 close' })
+  return agent(`${CTX}
+
+역할: B2. 가격 재확인 에이전트. 대상: ${s.name} (${s.code}, ${s.market}). 도시에에 있는 최근 확인 종가는 ${s.P0}원(${s.P0_date})이다.
+2026-09-28(월) 정규장 종가를 찾아라(추석 연휴 뒤 첫 거래일, 직전 거래일은 9/23로 추정). 검색은 최대 4회. '특징주', '마감', '종가', 날짜를 조합해 검색하고, 기사 게시일과 가격 기준일을 구분하라.
+9/28 종가를 찾지 못하면 9/23 등 ${s.P0_date}보다 더 최근의 종가라도 찾아라. 더 최근 값이 없으면 close_krw=null로 두라. 추측 금지.`, { label: `B2:price:${s.name}`, phase: 'Price', schema: PRICE_SCHEMA })
+    .then(pc => {
+      if (pc && pc.close_krw && pc.close_date && pc.close_date > s.P0_date) return { ...s, P0: pc.close_krw, P0_date: pc.close_date, price_check: pc }
+      return { ...s, price_check: pc || 'price agent failed' }
+    })
+}
+
 const results = await pipeline(args.stocks,
+  priceStage,
   s => parallel([
     () => agent(specialistPrompt(s), { label: `D:spec:${s.name}`, phase: 'Specialist', schema: ANALYST_SCHEMA }),
     () => agent(generalistPrompt(s), { label: `GEN:${s.name}`, phase: 'Generalist', schema: ANALYST_SCHEMA }),
-  ]),
-  ([sp, ge], s) => {
-    if (!sp || !ge) return { stock: s.name, error: `analyst missing: spec=${!!sp} gen=${!!ge}`, sp, ge }
+  ]).then(pair => ({ s, pair })),
+  ({ s, pair }) => {
+    const [sp, ge] = pair
+    if (!sp || !ge) return { stock: s.name, error: `analyst missing: spec=${!!sp} gen=${!!ge}`, sp, ge, s }
     return agent(synthPrompt(s, sp, ge), { label: `H:calib:${s.name}`, phase: 'Calibrate', schema: SYNTH_SCHEMA })
-      .then(fin => ({ stock: s.name, sp, ge, fin }))
+      .then(fin => ({ stock: s.name, s, sp, ge, fin }))
   },
 )
 
 return results.map(r => r && r.fin ? ({
-  stock: r.stock,
+  stock: r.stock, P0: r.s.P0, P0_date: r.s.P0_date,
   spec: [r.sp.horizons.y1.expected_tsr_cum_pct, r.sp.horizons.y3.expected_tsr_cum_pct, r.sp.horizons.y5.expected_tsr_cum_pct],
   gen: [r.ge.horizons.y1.expected_tsr_cum_pct, r.ge.horizons.y3.expected_tsr_cum_pct, r.ge.horizons.y5.expected_tsr_cum_pct],
   fin: [r.fin.horizons.y1.expected_tsr_cum_pct, r.fin.horizons.y3.expected_tsr_cum_pct, r.fin.horizons.y5.expected_tsr_cum_pct],
