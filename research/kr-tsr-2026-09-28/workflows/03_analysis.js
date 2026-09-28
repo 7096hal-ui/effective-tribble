@@ -102,7 +102,7 @@ const GUIDE = {
   ESS_INDUSTRIAL_MATERIALS: 'ESS·산업재·특수소재 전문가. 점검: 미국·유럽 ESS 설치량 전망, AI 데이터센터 전력 수요, 주요 고객 의존도와 계약 구조, 관세·FEOC·IRA, 증설 CAPEX와 운전자본, 원자재 가격, 특수금속 수요(반도체·우주항공)와 증설 램프업, 마진 지속성.',
 }
 
-const stockLine = s => `대상: ${s.name} (${s.code}, ${s.market}), P0 = ${s.P0}원 (${s.P0_date} 종가), 산업군 ${s.group}. 도시에 파일: ${args.dossierDir}/${s.name}.json`
+const stockLine = s => `대상: ${s.name} (${s.code}, ${s.market}), P0 = ${s.P0}원 (${s.P0_date} 종가), 산업군 ${s.group}. 도시에 파일: ${args.dossierDir}/${s.name}.json${s.note ? `\n오케스트레이터 메모: ${s.note}` : ''}`
 
 const specialistPrompt = s => `${CTX}
 
@@ -150,14 +150,16 @@ const PRICE_SCHEMA = {
 }
 
 const priceStage = s => {
-  if (s.P0_date === '2026-09-28') return Promise.resolve({ ...s, price_check: 'dossier already has 2026-09-28 close' })
+  if (s.P0_date === '2026-09-28' && !s.recheck) return Promise.resolve({ ...s, price_check: 'dossier already has cross-checked 2026-09-28 close' })
   return agent(`${CTX}
 
-역할: B2. 가격 재확인 에이전트. 대상: ${s.name} (${s.code}, ${s.market}). 도시에에 있는 최근 확인 종가는 ${s.P0}원(${s.P0_date})이다.
+역할: B2. 가격 재확인 에이전트. 대상: ${s.name} (${s.code}, ${s.market}). 도시에에 있는 최근 확인 종가는 ${s.P0}원(${s.P0_date})이다${s.recheck ? ' — 단일 출처라 교차확인이 필요하다' : ''}.
 2026-09-28(월) 정규장 종가를 찾아라(추석 연휴 뒤 첫 거래일, 직전 거래일은 9/23로 추정). 검색은 최대 4회. '특징주', '마감', '종가', 날짜를 조합해 검색하고, 기사 게시일과 가격 기준일을 구분하라.
 9/28 종가를 찾지 못하면 9/23 등 ${s.P0_date}보다 더 최근의 종가라도 찾아라. 더 최근 값이 없으면 close_krw=null로 두라. 추측 금지.`, { label: `B2:price:${s.name}`, phase: 'Price', schema: PRICE_SCHEMA })
     .then(pc => {
-      if (pc && pc.close_krw && pc.close_date && pc.close_date > s.P0_date) return { ...s, P0: pc.close_krw, P0_date: pc.close_date, price_check: pc }
+      const newer = pc && pc.close_krw && pc.close_date && pc.close_date.slice(0, 10) > s.P0_date
+      const confirmed = pc && pc.close_krw && s.recheck && pc.cross_checked && pc.close_date && pc.close_date.slice(0, 10) === s.P0_date
+      if (newer || confirmed) return { ...s, P0: pc.close_krw, P0_date: pc.close_date.slice(0, 10), price_check: pc }
       return { ...s, price_check: pc || 'price agent failed' }
     })
 }
