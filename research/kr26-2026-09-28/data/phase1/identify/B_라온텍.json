@@ -1,0 +1,89 @@
+{
+ "input_name": "라온텍",
+ "legal_name_ko": "주식회사 라온텍 (학습지식 기반, 이번 세션에서 검증 불가)",
+ "legal_name_en": "Raontech Inc. (학습지식 기반, 미검증)",
+ "code": "418420 (힌트 및 학습지식과 일치하나 이번 세션에서 검색 검증 불가)",
+ "market": "KOSDAQ (학습지식 기반, 미검증)",
+ "share_class": "보통주",
+ "listing_date": null,
+ "tradable_on_2026_09_28": true,
+ "tradability_note": "이번 세션에서 WebSearch 한도(200/200회)가 소진되어 2026-09-28 기준 거래정지·관리종목·투자경고 여부를 검증하지 못함. 로컬 연구 디렉터리(/home/user/effective-tribble/research/kr26-2026-09-28/data)에도 선행 수집 데이터 없음. true는 '반대 증거를 확인하지 못했다'는 의미의 기본 가정일 뿐이며 확정 사실이 아님. 하위 단계에서 반드시 재확인 필요.",
+ "status_designations": [],
+ "corporate_actions": [],
+ "price": {
+  "krx_close_krw": null,
+  "close_date": null,
+  "prev_close_krw": null,
+  "prev_close_date": null,
+  "pct_change": null,
+  "sources": [],
+  "cross_check_note": "WebSearch 호출 한도 소진(세션당 200회)으로 2026-09-28 KRX 종가 및 직전 거래일 종가를 조회할 수 없었음. 추정치를 넣지 않음.",
+  "nxt_note": "NXT 가격도 확인 불가. KRX 종가와 혼동된 값 없음."
+ },
+ "shares": {
+  "common_listed": null,
+  "preferred_listed": null,
+  "treasury_common": null,
+  "asof": null,
+  "source": "확인 불가 (검색 한도 소진)"
+ },
+ "dilution": {
+  "instruments": [],
+  "total_potential_shares": null,
+  "fully_diluted_shares": null,
+  "note": "확인 불가. instruments를 빈 배열로 둔 것은 '희석증권이 없음을 확인'한 것이 아니라 조회 자체를 못 했기 때문임. 기술특례 상장 팹리스 특성상 CB/스톡옵션 존재 가능성이 있으므로 DART 재확인 필요."
+ },
+ "market_cap": {
+  "value_krw": null,
+  "asof": null,
+  "method": "종가 × 상장 보통주식수로 산출해야 하나 두 입력값 모두 확인 불가"
+ },
+ "fiscal": {
+  "latest_annual_period": null,
+  "latest_quarter_period": null,
+  "annual": "확인 불가 (검색 한도 소진). 12월 결산법인으로 추정되며 최근 연간은 FY2025, 최근 분기는 2026 2Q(반기)일 가능성이 높으나 수치 미확인.",
+  "latest_quarter": "확인 불가",
+  "audit_opinion": null,
+  "sources": []
+ },
+ "business": {
+  "core": "학습지식 기반(미검증): 마이크로디스플레이(LCoS, OLEDoS/마이크로OLED)용 구동 SoC·디스플레이 컨트롤러와 마이크로디스플레이 모듈을 설계하는 팹리스 반도체 기업. AR/VR/MR 스마트글라스, HUD, 산업용 및 군용 광학기기 등이 주요 응용처.",
+  "segments": "부문별 매출 비중 확인 불가",
+  "key_customers": "확인 불가 (AR/XR 기기 제조사 및 광학·방산 기기 업체로 알려져 있으나 이번 세션에서 검증하지 못함)",
+  "proposed_group": "AI하드웨어·디스플레이·검사장비·팹리스"
+ },
+ "risk_market_data": {
+  "high_52w": null,
+  "high_52w_date": null,
+  "low_52w": null,
+  "low_52w_date": null,
+  "all_time_high": null,
+  "all_time_high_date": null,
+  "returns": "확인 불가",
+  "avg_daily_trading_value_krw": null,
+  "adtv_note": "확인 불가 (검색 한도 소진)",
+  "beta_reported": null,
+  "gap_events": "확인 불가",
+  "index_membership": "확인 불가 (소형 팹리스로 KOSDAQ150 비편입 가능성이 높다고 보이나 미검증)",
+  "foreign_ownership_pct": null
+ },
+ "consensus": "확인 불가 (검색 한도 소진. 소형주로 커버리지가 제한적일 가능성)",
+ "recent_news": [],
+ "data_flags": [
+  "치명적: 이번 세션의 WebSearch 호출 한도(200/200)가 이미 소진되어 첫 검색부터 거부됨. 외부 데이터를 전혀 확보하지 못했음. WebFetch/curl은 과제 지침상 사용 금지",
+  "로컬 연구 폴더(research/kr26-2026-09-28/data/phase1, phase2, final)가 비어 있어 캐시된 데이터도 없음",
+  "법인명, 코드 418420, KOSDAQ, 마이크로디스플레이 팹리스 사업은 모델 학습지식(2026년 6월까지)에만 근거하며 이번 세션에서 검증하지 못함",
+  "2026-09-28 KRX 종가, 주식수, 시가총액, 희석, 재무, 시장데이터, 컨센서스, 뉴스가 모두 null이거나 확인 불가임. 이 종목은 CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION을 올리거나 새 세션에서 재수집할 때까지 TSR 모델에 투입하면 안 됨",
+  "tradable_on_2026_09_28=true는 검증되지 않은 기본값임",
+  "희석 instruments 빈 배열은 '없음'을 확인했다는 뜻이 아님. 기술특례 팹리스라 CB·스톡옵션 가능성이 있으므로 DART로 확인 필요",
+  "상장일, 보호예수 해제, 오버행 일정 확인 불가"
+ ],
+ "confidence": "낮음",
+ "sources": [
+  {
+   "title": "외부 출처 없음 - WebSearch 한도 소진으로 검색 불가 (세션 도구 응답: 'this session has used its web search budget (200 of 200 WebSearch calls)')",
+   "url": "N/A",
+   "date": "2026-09-28"
+  }
+ ]
+}

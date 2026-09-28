@@ -1,0 +1,92 @@
+{
+ "input_name": "에이치브이엠",
+ "legal_name_ko": "주식회사 에이치브이엠 (미검증 — 이번 세션에서 외부 확인 불가)",
+ "legal_name_en": "HVM Co., Ltd. (미검증)",
+ "code": "295310 (오케스트레이터 힌트. 이번 세션에서 KRX 검색으로 확인하지 못함 — 미검증)",
+ "market": "KOSDAQ (학습 지식과 힌트 기준, 미검증)",
+ "share_class": "보통주",
+ "listing_date": null,
+ "tradable_on_2026_09_28": true,
+ "tradability_note": "이번 세션에서는 WebSearch 한도(세션 누적 200/200)를 이미 다 써서 외부 검색을 한 번도 하지 못했다. 2026-09-28 기준 거래정지·관리종목·투자경고/위험 지정·실질심사 여부는 확인하지 못했다. 스키마상 boolean이 필수라서, 알려진 거래정지 사유가 없다는 전제로 true를 임시로 넣었을 뿐 검증된 값이 아니다. 하류 에이전트는 이 값을 그대로 쓰지 말고 다시 확인해야 한다.",
+ "status_designations": [],
+ "corporate_actions": [
+  {
+   "type": "신규상장(IPO)",
+   "detail": "학습 지식으로는 2025년 상반기 무렵 코스닥 기술특례/일반 상장으로 기억하지만, 날짜·공모가·방식을 이번 세션에서 확인하지 못했다. 미검증.",
+   "source": "확인 불가 (WebSearch 한도 소진)"
+  }
+ ],
+ "price": {
+  "krx_close_krw": null,
+  "close_date": null,
+  "prev_close_krw": null,
+  "prev_close_date": null,
+  "pct_change": null,
+  "sources": [],
+  "cross_check_note": "WebSearch 한도(200/200)를 다 써서 2026-09-28 KRX 종가와 직전 거래일(추석 연휴로 9/23일 가능성) 종가를 전혀 조회하지 못했다. NXT 가격도 확인하지 못했다.",
+  "nxt_note": "확인 불가"
+ },
+ "shares": {
+  "common_listed": null,
+  "preferred_listed": null,
+  "treasury_common": null,
+  "asof": null,
+  "source": "확인 불가 (WebSearch 한도 소진)"
+ },
+ "dilution": {
+  "instruments": [],
+  "total_potential_shares": null,
+  "fully_diluted_shares": null,
+  "note": "CB/BW/RCPS와 스톡옵션 현황을 확인하지 못했다. instruments가 빈 배열인 것은 '해당 없음'을 확인했다는 뜻이 아니고 '미조회'라는 뜻이다. 상장 전 발행된 RCPS나 스톡옵션이 남아 있을 수 있으니 DART 증권신고서와 최근 분기보고서로 확인해야 한다."
+ },
+ "market_cap": {
+  "value_krw": null,
+  "asof": null,
+  "method": "종가 × 상장 보통주식수로 계산할 예정이었으나, 두 값 모두 확인하지 못해 계산하지 않았다."
+ },
+ "fiscal": {
+  "latest_annual_period": null,
+  "latest_quarter_period": null,
+  "annual": "확인 불가 (FY2025 실적 미조회)",
+  "latest_quarter": "확인 불가 (2026년 2분기 실적 미조회)",
+  "audit_opinion": null,
+  "sources": []
+ },
+ "business": {
+  "core": "학습 지식(2026년 6월 이전, 미검증) 기준으로는 진공용해 기반 첨단금속소재(고순도 금속, 특수합금 등) 제조사로 알고 있다. 이번 세션에서 확인하지 못했다.",
+  "segments": "확인 불가 (부문별 매출 비중 미조회). 학습 지식 기준 추정 용도는 디스플레이(OLED 공정용 합금), 반도체 장비용 소재, 우주항공·방산용 특수합금이다. 미검증.",
+  "key_customers": "확인 불가. 학습 지식 기준으로는 해외 우주발사체 업체 공급설이 있었으나 미검증이므로 사용하지 말 것.",
+  "proposed_group": "ESS·산업재·특수소재 (주요 대안: 우주항공·위성통신·5G6G·방산RF, 우주항공향 매출 비중이 크다면 이쪽). 확정하려면 매출 비중 확인이 필요하다."
+ },
+ "risk_market_data": {
+  "high_52w": null,
+  "high_52w_date": null,
+  "low_52w": null,
+  "low_52w_date": null,
+  "all_time_high": null,
+  "all_time_high_date": null,
+  "returns": "확인 불가",
+  "avg_daily_trading_value_krw": null,
+  "adtv_note": "확인 불가",
+  "beta_reported": null,
+  "gap_events": "확인 불가",
+  "index_membership": "확인 불가 (KOSDAQ150 편입 여부 미조회)",
+  "foreign_ownership_pct": null
+ },
+ "consensus": "확인 불가 (WebSearch 한도 소진으로 목표주가와 추정치를 조회하지 못함)",
+ "recent_news": [],
+ "data_flags": [
+  "치명적: 세션 전체 WebSearch 한도(200/200)를 이미 다 써서, 이 종목은 외부 검색을 한 번도 수행하지 못했다. 모든 수치 필드가 null이고 법인명·코드·시장도 미검증 상태다.",
+  "이 결과로 TSR이나 위험 계산을 하지 말 것. 검색 한도를 늘린(CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION) 뒤 이 종목의 역할 B를 다시 실행해야 한다.",
+  "tradable_on_2026_09_28=true는 스키마 필수값을 채운 임시 기본값이며 검증되지 않았다.",
+  "사업 설명은 모델의 학습 지식(2026년 6월 이전)에 기댄 것으로, 날짜와 수치를 일부러 적지 않았다.",
+  "상장한 지 2년이 안 된 신규상장주일 가능성이 있다. 보호예수 해제 물량, 상장 전 RCPS·스톡옵션 오버행, 짧은 주가이력으로 3년·5년 수익률이나 베타 산출에 제약이 있을 수 있으니 확인이 필요하다."
+ ],
+ "confidence": "낮음",
+ "sources": [
+  {
+   "title": "외부 출처 없음 — WebSearch 한도(200/200)를 다 써서 검색을 수행하지 못함",
+   "url": "N/A"
+  }
+ ]
+}

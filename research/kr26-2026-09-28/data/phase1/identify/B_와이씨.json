@@ -1,0 +1,95 @@
+{
+ "input_name": "와이씨",
+ "legal_name_ko": "와이씨 주식회사 (구 와이아이케이 주식회사) — 이번 세션에서 외부 검증 못 함",
+ "legal_name_en": "YC Corporation (구 YIK Corporation) — 외부 검증 못 함",
+ "code": "232140 (힌트 코드. 모델 사전지식과는 일치하나 이번 세션에서 KRX/DART로 확인하지 못함)",
+ "market": "KOSDAQ (사전지식 기준, 미검증)",
+ "share_class": "보통주",
+ "listing_date": null,
+ "tradable_on_2026_09_28": true,
+ "tradability_note": "확인 불가. 이 에이전트가 실행될 때 세션의 WebSearch 한도(200/200)가 이미 소진돼 외부 검색을 한 건도 하지 못했다. WebFetch·curl은 작업 지시에 따라 금지돼 있다. 모델 사전지식(2026년 6월까지)으로는 상장폐지·장기 거래정지를 알지 못해 true로 두었지만, 검증된 값이 아닌 기본 가정이다. 2025-09~2026-09 기간의 거래정지·관리종목·투자주의/경고/위험·실질심사·불성실공시 이력은 확인하지 못했다. 하류 에이전트는 이 필드를 검증된 값으로 쓰면 안 되며 KRX/KIND에서 다시 확인해야 한다.",
+ "status_designations": [],
+ "corporate_actions": [
+  {
+   "type": "사명 변경(사전지식, 미검증)",
+   "detail": "와이아이케이(YIK)에서 와이씨(YC)로 사명을 바꾼 것으로 알고 있음(2024년 무렵 추정). 정확한 변경일과 공시는 이번 세션에서 확인하지 못함. 별도 상장사인 와이씨켐(구 영창케미칼, 코드 112290, 반도체 소재)과 이름이 비슷하니 혼동하지 말 것.",
+   "source": "모델 사전지식 — 출처 URL 없음, 검증 필요",
+   "date": "확인 불가"
+  },
+  {
+   "type": "기타 분할·합병·액면변경·무상증자",
+   "detail": "최근 5년간 분할·합병·재상장·액면분할/병합·무상증자 이력 확인 불가(검색 불가)",
+   "source": "확인 불가"
+  }
+ ],
+ "price": {
+  "krx_close_krw": null,
+  "close_date": null,
+  "prev_close_krw": null,
+  "prev_close_date": null,
+  "pct_change": null,
+  "sources": [],
+  "cross_check_note": "WebSearch 한도가 소진돼 2026-09-28 KRX 종가와 직전 거래일(추석 연휴로 9/23일 가능성) 종가를 모두 확보하지 못함. 교차확인도 하지 못함. 기억에 의존한 가격은 추정치에 불과해 기재하지 않음.",
+  "nxt_note": "NXT 애프터마켓 가격도 확인하지 못함. 가격 필드는 모두 null."
+ },
+ "shares": {
+  "common_listed": null,
+  "preferred_listed": null,
+  "treasury_common": null,
+  "asof": null,
+  "source": "확인 불가(검색 불가). 최근 분기보고서의 주식총수와 자기주식 현황을 DART에서 확인해야 함."
+ },
+ "dilution": {
+  "instruments": [],
+  "total_potential_shares": null,
+  "fully_diluted_shares": null,
+  "note": "미상환 CB/BW/EB/RCPS, 스톡옵션, 예정된 유상증자를 확인하지 못함. instruments가 빈 배열인 것은 '해당 없음을 확인했다'는 뜻이 아니라 '조사하지 못했다'는 뜻이다. 사전지식상 이 회사는 과거 CB를 발행한 적이 있는 것으로 기억하나 회차·전환가·잔액은 확인하지 못함. 하류 모델은 희석 위험을 0으로 가정하면 안 됨."
+ },
+ "market_cap": {
+  "value_krw": null,
+  "asof": null,
+  "method": "종가 × 상장 보통주식수로 계산해야 하나 두 값 모두 확보하지 못해 산출 불가"
+ },
+ "fiscal": {
+  "latest_annual_period": null,
+  "latest_quarter_period": null,
+  "annual": "확인 불가. 최근 결산기(아마 FY2025, 12월 결산)의 매출·영업이익·순이익을 검색으로 확보하지 못함.",
+  "latest_quarter": "확인 불가. 2026년 반기(2Q26)가 최근 분기일 것으로 보이나 수치를 확보하지 못함.",
+  "audit_opinion": null,
+  "sources": []
+ },
+ "business": {
+  "core": "사전지식(미검증): 반도체 메모리 웨이퍼 테스터 등 반도체 검사장비 제조사. 전신 YIK 시절 Magnum 계열 메모리 테스터를 만들었고, 최근에는 HBM·DRAM용 고속 웨이퍼 테스터 국산화 스토리로 알려짐.",
+  "segments": "부문별 매출 비중 확인 불가",
+  "key_customers": "사전지식(미검증): 삼성전자가 주요 고객으로 알려져 있으며 고객 집중도가 높을 것으로 추정. 공시로 확인하지 못함.",
+  "proposed_group": "메모리·HBM밸류체인 (메모리 테스터가 주력이라 메모리 설비투자 사이클에 연동된다고 봄. 대안 분류는 AI하드웨어·디스플레이·검사장비·팹리스)"
+ },
+ "risk_market_data": {
+  "high_52w": null,
+  "high_52w_date": null,
+  "low_52w": null,
+  "low_52w_date": null,
+  "all_time_high": null,
+  "all_time_high_date": null,
+  "returns": "확인 불가(검색 불가)",
+  "avg_daily_trading_value_krw": null,
+  "adtv_note": "확인 불가",
+  "beta_reported": null,
+  "gap_events": "확인 불가. 다만 사전지식상 2025년 HBM 테스터 기대감으로 변동성이 큰 종목이었다고 기억함(정량 근거 없음).",
+  "index_membership": "KOSDAQ150 편입 여부 확인 불가",
+  "foreign_ownership_pct": null
+ },
+ "consensus": "확인 불가 (검색 한도 소진으로 목표주가·커버 증권사 수·2026E/2027E 추정치를 확보하지 못함)",
+ "recent_news": [],
+ "data_flags": [
+  "핵심 결함: 이 역할이 시작될 때 세션의 WebSearch 한도(200/200)가 이미 소진돼 외부 검색을 한 건도 하지 못함. WebFetch·curl은 작업 지시로 금지. 그래서 모든 수치 필드(종가, 주식수, 시가총액, 희석, 실적, 시장데이터, 컨센서스, 뉴스)가 null 또는 확인 불가임.",
+  "종목 식별(와이씨 = 구 와이아이케이, 232140, KOSDAQ)은 모델 사전지식과 힌트가 일치할 뿐 외부 검증을 하지 못함.",
+  "tradable_on_2026_09_28=true는 검증값이 아니라 기본 가정임. 최근 12개월 지정·정지 이력을 확인하지 못함.",
+  "dilution.instruments가 빈 배열인 것은 조사하지 못했기 때문이며 '메자닌 없음'을 뜻하지 않음. 과거 CB 발행 이력이 있을 수 있어 희석 위험 미반영에 주의.",
+  "동명이인 주의: 와이씨켐(구 영창케미칼, 112290)은 별도 상장 법인임.",
+  "다른 에이전트가 만든 scratchpad 산출물(synth_params.json 등)은 독립성 원칙에 따라 참조하지 않음.",
+  "권고: 검색 한도를 늘린(CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION) 뒤 이 종목의 B 역할을 다시 실행하거나, 하류에서 이 종목을 데이터 불충분으로 처리할 것."
+ ],
+ "confidence": "낮음",
+ "sources": []
+}

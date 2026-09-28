@@ -1,0 +1,95 @@
+{
+ "input_name": "선익시스템",
+ "legal_name_ko": "(주)선익시스템 (추정 — 이번 세션에서 외부 검증 불가)",
+ "legal_name_en": "Sunic System Co., Ltd. (모델 사전지식, 미검증)",
+ "code": "171090 (코드 힌트와 모델 사전지식이 일치. 이번 세션에서 KRX/DART 검색으로 재확인하지는 못함)",
+ "market": "KOSDAQ (사전지식 기준, 미검증)",
+ "share_class": "보통주",
+ "listing_date": null,
+ "tradable_on_2026_09_28": true,
+ "tradability_note": "확인 불가 상태에서 잠정적으로 true로 둠. 세션 공용 WebSearch 한도(200회)가 이 에이전트가 첫 검색을 하기 전에 이미 소진되어 검색이 한 번도 실행되지 않았음. WebFetch·curl은 작업 지침상 차단 대상. 따라서 2026-09-28 기준 거래정지·관리종목·투자경고 여부를 이번 세션에서 확인하지 못함. 모델 지식 시점(2026년 6월)까지는 선익시스템의 상장폐지나 장기 거래정지를 알지 못함. 다만 이것은 검증된 사실이 아니므로 하류 단계에서 반드시 재확인해야 함.",
+ "status_designations": [],
+ "corporate_actions": [
+  {
+   "type": "확인 불가",
+   "detail": "최근 5년 사명 변경·분할·합병·액면분할/병합·무상증자 이력을 이번 세션에서 검증하지 못함(WebSearch 한도 소진). 모델 사전지식으로는 해당 기간 선익시스템의 분할이나 합병을 알지 못하나, 무상증자·액면변경 여부는 확인하지 못함.",
+   "source": "없음(검색 불가)"
+  }
+ ],
+ "price": {
+  "krx_close_krw": null,
+  "close_date": null,
+  "prev_close_krw": null,
+  "prev_close_date": null,
+  "pct_change": null,
+  "sources": [],
+  "cross_check_note": "WebSearch 한도(200/200)가 소진되어 검색이 한 번도 실행되지 않음. 2026-09-28 KRX 종가, 직전 거래일(추석 연휴로 9/23일 수 있음) 종가, 등락률을 모두 확인하지 못함. 추측값은 넣지 않음.",
+  "nxt_note": "NXT 애프터마켓 가격도 확인하지 못함. 하류 단계에서 KRX 공식 종가를 따로 확보해야 함."
+ },
+ "shares": {
+  "common_listed": null,
+  "preferred_listed": null,
+  "treasury_common": null,
+  "asof": null,
+  "source": "확인 불가(WebSearch 한도 소진). 우선주는 상장돼 있지 않은 것으로 알고 있으나(사전지식) 미검증."
+ },
+ "dilution": {
+  "instruments": [],
+  "total_potential_shares": null,
+  "fully_diluted_shares": null,
+  "note": "'해당 없음'을 확인한 것이 아님. CB/BW/EB/RCPS, 스톡옵션, 예정된 유상증자 잔액을 전혀 조회하지 못해 instruments가 비어 있음. 희석 규모는 확인 불가이며 DART 사업보고서·반기보고서로 재확인해야 함."
+ },
+ "market_cap": {
+  "value_krw": null,
+  "asof": null,
+  "method": "종가 × 상장 보통주식수로 계산할 예정이었으나 두 값 모두 확인하지 못해 계산하지 않음."
+ },
+ "fiscal": {
+  "latest_annual_period": null,
+  "latest_quarter_period": null,
+  "annual": "확인 불가. 12월 결산법인으로 추정되며, 이 경우 최근 연간은 FY2025, 최근 분기는 2026년 2분기(반기)임. 매출·영업이익·순이익 수치는 이번 세션에서 검증하지 못해 기재하지 않음.",
+  "latest_quarter": "확인 불가(2026년 반기보고서 수치 미확보).",
+  "audit_opinion": null,
+  "sources": []
+ },
+ "business": {
+  "core": "OLED 제조용 진공 증착장비(evaporation deposition system) 전문 장비사로 알려져 있음(모델 사전지식, 미검증). 소형·중형 OLED 증착기와 OLEDoS(OLED on Silicon, 마이크로 OLED)용 증착장비를 만들며, 연구개발용 소형 장비도 공급함.",
+  "segments": "부문별 매출 비중은 확인 불가. 사전지식으로는 OLED 증착장비가 매출 대부분을 차지하며, 대형 장비 수주가 몇 건이냐에 따라 연도별 실적 변동이 매우 큼.",
+  "key_customers": "사전지식(미검증) 기준 중국 BOE 등 중화권 패널사와 마이크로 OLED(OLEDoS) 제조사. 최대주주는 동아엘텍으로 알려져 있음. 이번 세션에서 공시로 재확인하지 못함.",
+  "proposed_group": "AI하드웨어·디스플레이·검사장비·팹리스"
+ },
+ "risk_market_data": {
+  "high_52w": null,
+  "high_52w_date": null,
+  "low_52w": null,
+  "low_52w_date": null,
+  "all_time_high": null,
+  "all_time_high_date": null,
+  "returns": "확인 불가(시세 데이터 미확보)",
+  "avg_daily_trading_value_krw": null,
+  "adtv_note": "확인 불가",
+  "beta_reported": null,
+  "gap_events": "확인 불가",
+  "index_membership": "확인 불가. KOSPI200에는 해당하지 않음(KOSDAQ 종목으로 알고 있으므로). KOSDAQ150 편입 여부는 미확인.",
+  "foreign_ownership_pct": null
+ },
+ "consensus": "확인 불가(검색 불가로 목표주가, 커버 증권사 수, 2026E·2027E 추정치를 확보하지 못함)",
+ "recent_news": [],
+ "data_flags": [
+  "치명적 데이터 공백: 세션 공용 WebSearch 한도(200/200)가 이 에이전트가 첫 검색을 하기 전에 이미 소진되어 검색이 한 번도 실행되지 않음. 지침상 WebFetch·curl은 사용하지 않았음. 모든 수치 필드가 null이며, 이 결과를 TSR 산출에 그대로 쓰면 안 됨.",
+  "로컬 저장소 /home/user/effective-tribble/research/kr26-2026-09-28/ 에는 엔진 코드(model/engine.py)만 있고, 선익시스템 관련 선행 데이터는 없음.",
+  "종목코드 171090·KOSDAQ·영문명 Sunic System은 코드 힌트와 모델 사전지식(2026년 6월까지)이 일치할 뿐 1차 출처로 검증하지 않았음.",
+  "2026-09-28 KRX 종가, 직전 거래일(추석 연휴로 9/23 가능) 종가, 상장주식수, 자기주식, 시가총액을 모두 확인하지 못함.",
+  "CB/BW/스톡옵션 등 희석증권을 조회하지 못함. instruments가 빈 배열인 것은 '없음'이 아니라 '미확인'이라는 뜻임.",
+  "관리종목·투자주의/경고·불성실공시 이력을 확인하지 못함. tradable=true는 잠정값임.",
+  "장비 수주에 따라 실적 변동이 큰 사업 구조(사전지식): 연간 실적과 컨센서스를 반드시 최신 공시로 재확인해야 함.",
+  "권고: 검색 한도를 올리거나(CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION) 이 종목의 B단계를 다시 실행해야 함."
+ ],
+ "confidence": "낮음",
+ "sources": [
+  {
+   "title": "외부 출처 없음 — WebSearch 한도 소진으로 검색 미실행(모델 사전지식만 사용, 미검증)",
+   "url": "N/A"
+  }
+ ]
+}

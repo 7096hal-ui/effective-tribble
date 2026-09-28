@@ -1,0 +1,85 @@
+{
+ "input_name": "화신",
+ "legal_name_ko": "(주)화신 (미검증: 학습지식 기준, 이번 세션에서 웹 교차확인 불가)",
+ "legal_name_en": "HWASHIN Co., Ltd. (미검증)",
+ "code": "010690 (미검증: 힌트와 학습지식이 일치하나 이번 세션에서 KRX/DART로 확인하지 못함)",
+ "market": "KOSPI (미검증)",
+ "share_class": "보통주",
+ "listing_date": null,
+ "tradable_on_2026_09_28": true,
+ "tradability_note": "검증 불가. 이 세션은 WebSearch 한도(200/200회)를 모두 써서 검색이 한 건도 실행되지 않았다. 학습지식(2026-06 이전)상 화신은 KOSPI 정상 상장 종목이며 거래정지·관리종목 지정 사실을 알지 못한다. 그러나 2026-09-28 기준 거래 가능 여부와 최근 12개월 지정 이력은 확인하지 못했다. true는 기본값 가정일 뿐 확인된 사실이 아니므로 하위 단계에서 반드시 재검증해야 한다.",
+ "status_designations": [],
+ "corporate_actions": [],
+ "price": {
+  "krx_close_krw": null,
+  "close_date": null,
+  "prev_close_krw": null,
+  "prev_close_date": null,
+  "pct_change": null,
+  "sources": [],
+  "cross_check_note": "WebSearch 한도(200/200)를 모두 써서 2026-09-28 KRX 종가, 직전 거래일(추석 연휴로 9/23일 가능성) 종가, 등락률을 전혀 조회하지 못했다. 추측값은 넣지 않았다.",
+  "nxt_note": "확인 불가. NXT 가격도 조회하지 않았다."
+ },
+ "shares": {
+  "common_listed": null,
+  "preferred_listed": null,
+  "treasury_common": null,
+  "asof": null,
+  "source": "확인 불가(검색 한도 소진). 학습지식상 상장 보통주는 약 3,492만 주 수준으로 기억하나 검증되지 않아 null로 둠."
+ },
+ "dilution": {
+  "instruments": [],
+  "total_potential_shares": null,
+  "fully_diluted_shares": null,
+  "note": "확인 불가. 메자닌(CB/BW/EB/RCPS)·스톡옵션·유상증자 부재를 '확인'한 것이 아니라 조회 자체를 하지 못했다(검색 한도 소진). instruments가 빈 배열인 것은 '해당 없음 확인'을 뜻하지 않는다."
+ },
+ "market_cap": {
+  "value_krw": null,
+  "asof": null,
+  "method": "종가 × 상장 보통주식수. 두 값 모두 확보하지 못해 계산 불가."
+ },
+ "fiscal": {
+  "latest_annual_period": "2025-12-31(추정 결산기, 12월 결산 가정 — 미검증)",
+  "latest_quarter_period": "2026-06-30(2026년 반기, 추정 — 미검증)",
+  "annual": "확인 불가(검색 한도 소진). 2025년 연간 매출·영업이익·순이익 미확보.",
+  "latest_quarter": "확인 불가. 2026년 2분기/반기 실적 미확보.",
+  "audit_opinion": null,
+  "sources": []
+ },
+ "business": {
+  "core": "학습지식(미검증): 경북 영천 소재 자동차 섀시·차체 부품(서스펜션 암·서브프레임 등 샤시 모듈, 차체 프레스 부품) 제조사. 현대차·기아 1차 협력사이며 국내외(미국·중국·인도·브라질 등) 생산법인을 보유한 것으로 알고 있음.",
+  "segments": "확인 불가(부문별 매출 비중 미확보)",
+  "key_customers": "현대자동차·기아(학습지식, 미검증; 매출 의존도 수치 미확인)",
+  "proposed_group": "자동차·전장·SDV·부품"
+ },
+ "risk_market_data": {
+  "high_52w": null,
+  "high_52w_date": null,
+  "low_52w": null,
+  "low_52w_date": null,
+  "all_time_high": null,
+  "all_time_high_date": null,
+  "returns": "확인 불가(검색 한도 소진)",
+  "avg_daily_trading_value_krw": null,
+  "adtv_note": "확인 불가",
+  "beta_reported": null,
+  "gap_events": "확인 불가",
+  "index_membership": "확인 불가. 학습지식상 KOSPI200 비편입 중소형주로 보이나 미검증",
+  "foreign_ownership_pct": null
+ },
+ "consensus": "확인 불가(검색 한도 소진으로 목표주가·커버 증권사·2026E/2027E 추정치 미조회)",
+ "recent_news": [],
+ "data_flags": [
+  "치명적: 이 세션의 WebSearch 한도(CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION, 200/200)가 모두 소진되어 검색이 한 건도 실행되지 않음. 이 결과의 모든 식별 정보는 2026-06 이전 학습지식에서 나온 것이며 외부 출처로 교차확인하지 않았음.",
+  "2026-09-28 KRX 종가·직전 거래일 종가·등락률 미확보 → TSR 산출 기준가로 쓸 수 없음. 재조회 필요.",
+  "상장주식수·자기주식·시가총액 미확보.",
+  "희석증권(CB/BW/EB/RCPS/스톡옵션) 조회 불가. 빈 배열은 '없음 확인'이 아님.",
+  "재무(2025 연간, 2026 상반기)·감사의견·컨센서스·52주 고저·거래대금·외국인 지분율·지수 편입 모두 미확보.",
+  "최근 12개월 지정 이력(관리종목·투자경고 등)과 최근 5년 기업행위(분할·합병·액면변경 등) 미검증. 빈 배열은 '이력 없음 확인'이 아님.",
+  "tradable_on_2026_09_28=true는 확인된 사실이 아니라 기본값 가정임.",
+  "로컬 작업폴더와 scratchpad에서 화신/010690 관련 기존 수집 데이터를 찾았으나 없었음.",
+  "권고: 검색 한도를 올린 뒤 이 종목의 B역할을 재실행하거나, 오케스트레이터가 이 종목을 '데이터 미확보'로 처리할 것."
+ ],
+ "confidence": "낮음",
+ "sources": []
+}

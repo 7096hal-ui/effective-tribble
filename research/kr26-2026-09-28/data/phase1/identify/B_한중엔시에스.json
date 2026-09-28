@@ -1,0 +1,85 @@
+{
+ "input_name": "한중엔시에스",
+ "legal_name_ko": "(주)한중엔시에스 (미검증 — 이번 실행에서 외부 검색 불가로 공시 대조 못 함)",
+ "legal_name_en": null,
+ "code": "107640 (오케스트레이터 힌트값; 이번 실행에서 독립 검증 실패)",
+ "market": "KOSDAQ (힌트·사전지식 기준, 미검증)",
+ "share_class": "보통주",
+ "tradable_on_2026_09_28": true,
+ "tradability_note": "확인 불가. 이 세션의 WebSearch 한도(200/200회)가 소진돼 검색이 한 번도 실행되지 않았다. WebFetch·curl은 작업 지침상 차단 대상이라 쓰지 않았다. 따라서 2026-09-28 거래정지·관리종목·투자경고 여부를 전혀 확인하지 못했다. true는 '정지 사실을 확인하지 못했다'는 뜻의 기본 가정일 뿐 검증된 값이 아니다. 하위 단계는 이 종목을 거래 가능 여부 미확인으로 다뤄야 한다.",
+ "status_designations": [],
+ "corporate_actions": [],
+ "price": {
+  "krx_close_krw": null,
+  "close_date": null,
+  "prev_close_krw": null,
+  "prev_close_date": null,
+  "pct_change": null,
+  "sources": [],
+  "cross_check_note": "WebSearch 한도 소진으로 2026-09-28 KRX 종가와 직전 거래일 종가를 모두 확보하지 못했다. 교차확인도 할 수 없었다.",
+  "nxt_note": "NXT 가격도 조회하지 못했다."
+ },
+ "shares": {
+  "common_listed": null,
+  "treasury_common": null,
+  "preferred_listed": null,
+  "asof": null,
+  "source": "확인 불가(검색 불가)"
+ },
+ "dilution": {
+  "instruments": [],
+  "total_potential_shares": null,
+  "fully_diluted_shares": null,
+  "note": "확인 불가. instruments가 빈 배열인 것은 '메자닌 없음'을 확인했다는 뜻이 아니다. 조회를 전혀 하지 못했다는 뜻이다. CB/BW/스톡옵션/유상증자 여부는 DART에서 다시 확인해야 한다."
+ },
+ "market_cap": {
+  "value_krw": null,
+  "asof": null,
+  "method": "종가 × 상장 보통주식수. 두 입력값 모두 확보하지 못해 계산하지 못함"
+ },
+ "fiscal": {
+  "latest_annual_period": null,
+  "latest_quarter_period": null,
+  "annual": "확인 불가(검색 불가). 예상 기준으로 2025년 연간(12월 결산)이 최근 연간일 가능성이 높으나 수치는 미확보",
+  "latest_quarter": "확인 불가. 2026년 2분기(반기보고서, 2026-08 중순 제출) 수치 미확보",
+  "audit_opinion": null,
+  "sources": []
+ },
+ "business": {
+  "core": "사전지식(2026-06 이전 학습 데이터) 기준, 검증 안 됨: 산업용·차량용 열관리(냉각) 부품 제조사로 알려져 있다. ESS용 수랭식 냉각장치와 자동차 열교환기·냉각모듈 부품이 주력이다. 이번 실행에서 확인한 내용이 아니다.",
+  "segments": "확인 불가(부문별 매출 비중 미확보)",
+  "key_customers": "사전지식 기준 삼성SDI(ESS 냉각), 국내 완성차·부품사 등으로 추정되나 검증 안 됨",
+  "proposed_group": "ESS·산업재·특수소재 (사전지식 기반 잠정 분류. 자동차·전장·SDV·부품도 대안 분류 후보)"
+ },
+ "risk_market_data": {
+  "high_52w": null,
+  "high_52w_date": null,
+  "low_52w": null,
+  "low_52w_date": null,
+  "all_time_high": null,
+  "all_time_high_date": null,
+  "returns": "확인 불가",
+  "avg_daily_trading_value_krw": null,
+  "adtv_note": "확인 불가",
+  "beta_reported": null,
+  "gap_events": "확인 불가",
+  "index_membership": "확인 불가(KOSDAQ150 편입 여부 미확인)",
+  "foreign_ownership_pct": null
+ },
+ "consensus": "확인 불가(검색 불가)",
+ "recent_news": [],
+ "data_flags": [
+  "치명적: 이 세션의 WebSearch 한도(200/200)가 소진돼 이번 에이전트 실행에서 검색을 하나도 하지 못했다. 이 레코드에는 검증된 값이 하나도 없다.",
+  "로컬 저장소(/home/user/effective-tribble/research)와 스크래치패드에서도 한중엔시에스·107640 관련 데이터를 찾지 못했다.",
+  "종목코드 107640과 KOSDAQ은 힌트와 사전지식일 뿐이다. 법인명·상장일·거래 가능 여부를 DART/KRX로 다시 확인해야 한다.",
+  "종가·주식수·시총·완전희석 주식수·재무·52주 범위·컨센서스·뉴스가 모두 null이다. TSR 산출에 쓰면 안 된다.",
+  "CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION을 늘리거나 새 세션에서 이 역할을 다시 실행하도록 권고한다."
+ ],
+ "confidence": "낮음",
+ "sources": [
+  {
+   "title": "확인된 외부 출처 없음 — WebSearch 한도 소진(200/200)으로 검색이 실행되지 않음",
+   "url": "N/A"
+  }
+ ]
+}

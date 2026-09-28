@@ -1,0 +1,81 @@
+{
+ "input_name": "케이엠더블유",
+ "legal_name_ko": "주식회사 케이엠더블유 (학습지식 기준, 이번 세션에서 공시로 재확인하지 못함)",
+ "legal_name_en": "KMW Co., Ltd. (미검증)",
+ "code": "032500",
+ "market": "KOSDAQ (학습지식 기준, 이번 세션 검색 재확인 불가)",
+ "share_class": "보통주",
+ "listing_date": null,
+ "tradable_on_2026_09_28": true,
+ "tradability_note": "확인 불가. 이 세션은 WebSearch 한도(200/200회)를 모두 써서 검색이 한 번도 실행되지 않았다. 따라서 2026-09-28 기준 거래정지·관리종목·투자경고 여부를 직접 확인하지 못했다. true는 검증된 값이 아니다. 학습지식(2026-06 이전)상 이 종목이 상장폐지·장기 거래정지된 사례를 알지 못한다는 뜻의 잠정값일 뿐이며, 다운스트림에서 반드시 재확인해야 한다.",
+ "status_designations": [],
+ "corporate_actions": [],
+ "price": {
+  "krx_close_krw": null,
+  "close_date": null,
+  "prev_close_krw": null,
+  "prev_close_date": null,
+  "pct_change": null,
+  "sources": [],
+  "cross_check_note": "WebSearch 한도(200/200회)를 모두 써서 2026-09-28 KRX 종가, 직전 거래일 종가와 날짜를 전혀 조회하지 못했다. 교차확인도 못 했다. 기억에 의존한 주가는 추측이므로 쓰지 않았다.",
+  "nxt_note": "NXT 가격도 조회하지 못했다."
+ },
+ "shares": {
+  "common_listed": null,
+  "preferred_listed": null,
+  "treasury_common": null,
+  "asof": null,
+  "source": "확인 불가 (검색 한도 소진)"
+ },
+ "dilution": {
+  "instruments": [],
+  "total_potential_shares": null,
+  "fully_diluted_shares": null,
+  "note": "확인 불가. instruments가 빈 배열인 것은 '해당 사항 없음을 확인했다'는 뜻이 아니다. 조회 자체를 못 했다는 뜻이다. 미상환 CB/BW, 스톡옵션, 유상증자 계획을 반드시 DART에서 재확인해야 한다."
+ },
+ "market_cap": {
+  "value_krw": null,
+  "asof": null,
+  "method": "종가 × 상장 보통주식수로 계산할 예정이었으나 두 입력값을 모두 확보하지 못해 계산하지 않았다."
+ },
+ "fiscal": {
+  "latest_annual_period": null,
+  "latest_quarter_period": null,
+  "annual": "확인 불가 (검색 한도 소진). 학습지식상 2023~2024년에는 5G 투자가 둔화되면서 매출이 줄고 영업적자가 났던 것으로 기억한다. 다만 수치는 검증하지 못해 쓰지 않았다.",
+  "latest_quarter": "확인 불가",
+  "audit_opinion": null,
+  "sources": []
+ },
+ "business": {
+  "core": "학습지식 기준(미검증): 이동통신 기지국용 RF 부품과 장비(안테나, 필터, RRH/무선 유닛)를 만들고, LED 조명 사업도 한다.",
+  "segments": "부문별 매출 비중 확인 불가",
+  "key_customers": "학습지식 기준(미검증): 삼성전자, Nokia, Ericsson 등 글로벌 통신장비사와 해외 통신사. 이번 세션에서 확인하지 못함.",
+  "proposed_group": "우주항공·위성통신·5G6G·방산RF"
+ },
+ "risk_market_data": {
+  "high_52w": null,
+  "high_52w_date": null,
+  "low_52w": null,
+  "low_52w_date": null,
+  "all_time_high": null,
+  "all_time_high_date": null,
+  "returns": "확인 불가",
+  "avg_daily_trading_value_krw": null,
+  "adtv_note": "확인 불가",
+  "beta_reported": null,
+  "gap_events": "확인 불가",
+  "index_membership": "KOSDAQ150 편입 여부 확인 불가",
+  "foreign_ownership_pct": null
+ },
+ "consensus": "확인 불가 (검색 한도 소진)",
+ "recent_news": [],
+ "data_flags": [
+  "치명적: 이 세션의 WebSearch 한도(200/200회)가 이미 소진돼 검색이 한 번도 실행되지 않았다. 모든 수치 필드는 null이다. 이 종목은 다른 에이전트나 새 세션에서 전면 재조사해야 한다.",
+  "종목코드 032500과 KOSDAQ 시장은 학습지식과 오케스트레이터 힌트가 일치해 잠정 채택했다. 2026-09-28 기준으로 확정하지는 못했다.",
+  "tradable_on_2026_09_28=true는 검증되지 않은 잠정값이다.",
+  "dilution.instruments가 빈 배열인 것은 '미확인'을 뜻하며 '희석 요인 없음'을 뜻하지 않는다.",
+  "로컬 저장소(research/kr26-2026-09-28)에도 이 종목의 기존 데이터가 없었다."
+ ],
+ "confidence": "낮음",
+ "sources": []
+}

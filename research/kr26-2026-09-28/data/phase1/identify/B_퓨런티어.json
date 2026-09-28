@@ -1,0 +1,83 @@
+{
+ "input_name": "퓨런티어",
+ "legal_name_ko": "주식회사 퓨런티어 (미검증 — 사전 지식 기반)",
+ "legal_name_en": "Furonteer Inc. (미검증)",
+ "code": "370090 (힌트 코드; 이번 세션에서 검색 검증 불가)",
+ "market": "KOSDAQ (미검증 — 사전 지식상 2023년 하반기 KOSDAQ 신규상장으로 알고 있으나 확인 불가)",
+ "share_class": "보통주",
+ "listing_date": null,
+ "tradable_on_2026_09_28": true,
+ "tradability_note": "확인 불가. 이 세션의 WebSearch 한도(200/200)가 이미 소진돼 검색이 한 건도 수행되지 않았다. 2026-09-28 기준 거래정지·관리종목 지정 정보를 확인하지 못했다. true는 '정지 사실이 확인되지 않았다'는 뜻의 기본값일 뿐 검증된 값이 아니다. 하류 에이전트는 반드시 재확인해야 한다.",
+ "status_designations": [],
+ "corporate_actions": [],
+ "price": {
+  "krx_close_krw": null,
+  "close_date": null,
+  "prev_close_krw": null,
+  "prev_close_date": null,
+  "pct_change": null,
+  "sources": [],
+  "cross_check_note": "WebSearch 예산 소진(200/200)으로 검색 결과를 받지 못해 2026-09-28 KRX 종가와 직전 거래일 종가를 확인할 수 없었다. 교차확인도 하지 못했다. 스크래치패드와 리포지토리에도 이 종목의 원자료는 없었다.",
+  "nxt_note": "NXT 가격도 확인하지 않았다(검색 불가)."
+ },
+ "shares": {
+  "common_listed": null,
+  "preferred_listed": null,
+  "treasury_common": null,
+  "asof": null,
+  "source": "확인 불가 — 검색 예산 소진"
+ },
+ "dilution": {
+  "instruments": [],
+  "total_potential_shares": null,
+  "fully_diluted_shares": null,
+  "note": "확인 불가. 메자닌(CB/BW), 스톡옵션, 유상증자 유무를 검증하지 못했다. instruments를 빈 배열로 둔 것은 '없음 확인'이 아니라 '미확인'이라는 뜻이다."
+ },
+ "market_cap": {
+  "value_krw": null,
+  "asof": null,
+  "method": "종가 × 상장 보통주식수로 계산할 예정이었으나 두 입력값을 모두 확인하지 못해 산출 불가"
+ },
+ "fiscal": {
+  "latest_annual_period": null,
+  "latest_quarter_period": null,
+  "annual": "확인 불가 (FY2025 실적 검색 불가)",
+  "latest_quarter": "확인 불가 (2026년 2분기 실적 검색 불가)",
+  "audit_opinion": null,
+  "sources": []
+ },
+ "business": {
+  "core": "사전 지식 기반(미검증): 자동차 전장용 카메라 모듈 제조 공정장비(액티브 얼라인먼트 조립 장비, 검사·테스트 장비)를 만든다. ADAS·자율주행 카메라, 센서 모듈 생산라인에 공급하는 장비사로 알려져 있다.",
+  "segments": "확인 불가 (부문별 매출 비중 미확인)",
+  "key_customers": "확인 불가. 사전 지식상 국내외 카메라 모듈 제조사(전장 카메라 모듈 업체)가 주 고객으로 알려져 있으나, 고객사 이름과 비중은 검증하지 못했다.",
+  "proposed_group": "자동차·전장·SDV·부품 (대안: AI하드웨어·디스플레이·검사장비·팹리스 — 장비사 성격 때문. 매출이 전장 카메라 수요에 연동된다는 점을 근거로 1안을 제안하나, 사업 내용이 미검증이라 잠정 분류)"
+ },
+ "risk_market_data": {
+  "high_52w": null,
+  "high_52w_date": null,
+  "low_52w": null,
+  "low_52w_date": null,
+  "all_time_high": null,
+  "all_time_high_date": null,
+  "returns": "확인 불가",
+  "avg_daily_trading_value_krw": null,
+  "adtv_note": "확인 불가 — 검색 예산 소진",
+  "beta_reported": null,
+  "gap_events": "확인 불가",
+  "index_membership": "확인 불가 (시가총액 규모로 볼 때 KOSDAQ150 비편입일 가능성이 있으나 미검증)",
+  "foreign_ownership_pct": null
+ },
+ "consensus": "확인 불가 (검색 예산 소진. 커버 증권사, 목표주가, 2026E·2027E 추정치 모두 미확인)",
+ "recent_news": [],
+ "data_flags": [
+  "치명적: 이 세션의 WebSearch 한도(200/200)가 소진돼 검색이 한 건도 수행되지 않았다. WebFetch와 curl은 과제 지침상 사용 금지다. 따라서 이 종목의 수치 데이터(가격, 주식수, 희석, 실적, 시장데이터, 컨센서스, 뉴스)를 전부 확인하지 못했다.",
+  "종목코드 370090, KOSDAQ 시장, 법인명은 사전 지식과 힌트에 기반한 미검증 값이다.",
+  "tradable_on_2026_09_28=true는 검증되지 않은 기본값이다. 거래정지, 관리종목, 투자경고 여부를 재확인해야 한다.",
+  "dilution.instruments 빈 배열은 '미확인'을 뜻한다. 메자닌 부재가 확인된 것이 아니다.",
+  "사전 지식상 2023년 하반기 IPO 종목이다. 상장 후 약 3년이라 주가이력이 짧고, 3년 수익률 산출이 제한될 수 있다(미검증).",
+  "하류 TSR 모델은 이 종목을 데이터 불충분으로 처리하라. 검색 예산을 늘린 뒤(CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION) 재수행해야 한다.",
+  "리포지토리(/home/user/effective-tribble/research)와 스크래치패드에도 이 종목의 원자료는 없었다(grep 결과 0건)."
+ ],
+ "confidence": "낮음",
+ "sources": []
+}
