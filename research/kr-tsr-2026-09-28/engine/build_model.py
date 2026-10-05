@@ -13,7 +13,7 @@ import json
 from datetime import date
 from pathlib import Path
 
-ASOF = date(2026, 9, 28)
+ASOF = date(2026, 10, 6)
 FACTORS = [
     "fx_usdkrw_up10", "rates_up100bp", "terminal_multiple_down20", "semi_ai_down",
     "auto_tariff_demand", "bio_pos_down25", "dilution_up10", "key_customer_down20",
@@ -54,9 +54,9 @@ def check_scenarios(name: str, T: str, scen: list[dict], P0: float, log: list[st
 
 
 def main(work: Path, out: Path) -> None:
-    macro = load(work / "macro.json")
+    # macro_brief.json carries the risk-free rates and index expectations rebased to the latest close
+    scen = load(work / "macro_brief.json") or load(work / "macro.json")["scen"]
     uni = load(work / "universe.json")
-    scen = macro["scen"]
     rf = {"1": scen["risk_free"]["h1_pct"], "3": scen["risk_free"]["h3_pct"], "5": scen["risk_free"]["h5_pct"]}
     ei = scen["expected_index_tsr"]
     index_expected = {
@@ -98,7 +98,7 @@ def main(work: Path, out: Path) -> None:
             "confidence": {T: conf_src[k].get("confidence", "보통") for T, k in (("1", "y1"), ("3", "y3"), ("5", "y5"))},
             "perm_loss": (fin_override or fin)["tail"]["prob_permanent_loss_50pct_5y"],
         })
-    model = {"asof": "2026-09-28 19:40 KST", "rf": rf, "index_expected": index_expected, "stocks": stocks}
+    model = {"asof": "2026-10-06 KST (prices: latest close)", "rf": rf, "index_expected": index_expected, "stocks": stocks}
     out.write_text(json.dumps(model, ensure_ascii=False, indent=1))
     (out.parent / (out.stem + "_corrections.txt")).write_text("\n".join(log))
     print(f"{len(stocks)} stocks, {len(log)} corrections")
