@@ -1,0 +1,93 @@
+{
+ "no": 12,
+ "name": "화신",
+ "code": "010690",
+ "market": "KOSPI",
+ "group": "자동차·전장·SDV·부품",
+ "p0_krw": 9360,
+ "p0_date": "2026-10-02(추정)",
+ "p0_basis": "총괄 조정 지정: Investing.com 요약값(−460원, −4.68%). 페이지 갱신일이 10/5(휴장)이어서 최신 거래일 10/2 종가로 추정하나 날짜를 직접 확인하지 못함. 단일 출처.",
+ "latest_2026_10_02": {
+  "input_name": "화신",
+  "legal_name_ko": "주식회사 화신",
+  "code": "010690",
+  "market": "KOSPI",
+  "tradable": true,
+  "tradability_note": "거래정지·관리종목·투자경고 보도는 검색에서 확인되지 않았다. 다만 10월 시세 기사도 찾지 못해 10/2 정상 거래 여부를 직접 확인하지는 못했다. tradable=true는 반대 증거가 없다는 뜻의 추정이다. 이름이 비슷한 '화신정공'(KOSDAQ 별도 종목, 2026년 6월 로봇부품 기대로 약 3배 급등)과 혼동하지 않도록 주의해야 한다.",
+  "close": null,
+  "close_date": null,
+  "prev_close": null,
+  "prev_close_date": null,
+  "close_sources": [],
+  "price_note": "10/2 종가는 6회 검색으로 확인하지 못했다(확인 불가). 참고 시점값은 다음과 같다. 6/19 종가 14,330원(전일 12,030원 대비 +19.12%, 중앙이코노미뉴스 주간기사). 7/16 종가 8,030원(-5.19%, 중앙이코노미뉴스). 1/22 장중 9,750원. 날짜를 알 수 없는 금융사이트 값으로 7,700원(아이투자 추정)과 9,360원(-4.68%, Investing.com)이 있으나 시점이 불명확해 채택하지 않았다.",
+  "shares_common": null,
+  "shares_asof": null,
+  "market_cap_krw": null,
+  "market_cap_asof": null,
+  "high_52w": null,
+  "low_52w": null,
+  "range_note": "검색 요약에 '52주 최고 16,720원, 최저 6,410~7,500원대'가 있으나 출처 문서와 기준일을 특정할 수 없어 null로 두었다(참고치). 시가총액 참고치는 아이투자 4,190억원과 기업모니터(WISEreport) 4,596억원이며 둘 다 기준일 불명이다. Investing.com의 267.56B KRW는 과거값으로 보인다. 6월 고점 대비 7월에 이미 약 -44% 하락했다.",
+  "latest_results": "확인 불가. 2Q26·상반기 실적을 검색으로 확보하지 못했다.",
+  "outlook_consensus": "확인 불가. 한경 컨센서스 페이지(https://markets.hankyung.com/stock/010690/consensus)는 있으나 수치를 확보하지 못했다.",
+  "corporate_events": "확인 불가. 최근 6개월 유상증자·메자닌·자사주·최대주주 변동·대형 수주 보도를 찾지 못했다. 2026년 6월 중순 급등(5거래일 +19%대)이 있었고 로봇·현대차그룹 테마 연동으로 추정되나 재료는 확인하지 못했다.",
+  "recent_news": [
+   {
+    "date": "2026-07-16",
+    "item": "종가 8,030원(-5.19%)으로 하락 마감했다.",
+    "source": "중앙이코노미뉴스 https://www.joongangenews.com/news/articleView.html?idxno=533536"
+   },
+   {
+    "date": "2026-06-19",
+    "item": "최근 5거래일 급등락 속 19.12% 상승해 14,330원으로 마감했다.",
+    "source": "중앙이코노미뉴스 https://www.joongangenews.com/news/articleView.html?idxno=527145"
+   }
+  ],
+  "business_summary": "자동차 차체(바디)·섀시 부품 전문 제조사다. 현대차그룹이 주요 고객사다(검색 요약 기준). 일부 검색 요약은 '한화 계열사'로 서술했는데 오류로 판단해 채택하지 않았다.",
+  "proposed_group": "자동차·전장·SDV·부품",
+  "searches_used": 6,
+  "flags": [
+   "10/2 KRX 종가, 직전 종가, 상장주식수, 시가총액, 52주 최고·최저 모두 확인 불가(6회 검색 소진). 다음 단계에서 가격 확보가 반드시 필요하다.",
+   "화신정공(KOSDAQ, 별도 법인)과 이름 혼동 위험. 2026년 6월 '3배 급등' 기사는 화신정공에 관한 것이다.",
+   "52주 범위(16,720원/6,410~7,500원)와 시가총액(4,190억원/4,596억원)은 기준일 불명 참고치라 채택하지 않았다.",
+   "2Q26 실적, 컨센서스, 기업행위 모두 확인 불가.",
+   "검색 요약의 '한화 계열사' 서술은 오류로 판단해 기각했다."
+  ],
+  "sources": [
+   {
+    "title": "중앙이코노미뉴스 - 최근 5거래일 화신 주가 급등락 속 19.12% 상승 마감",
+    "url": "https://www.joongangenews.com/news/articleView.html?idxno=527145",
+    "date": "2026-06-19 전후"
+   },
+   {
+    "title": "중앙이코노미뉴스 - 화신 주가, 7월 16일 8,030원 5.19% 하락 마감",
+    "url": "https://www.joongangenews.com/news/articleView.html?idxno=533536",
+    "date": "2026-07-16"
+   },
+   {
+    "title": "중앙이코노미뉴스 - 화신 주가, 1월 22일 장중 9,750원 0.31% 하락",
+    "url": "https://www.joongangenews.com/news/articleView.html?idxno=488665",
+    "date": "2026-01-22"
+   },
+   {
+    "title": "아이투자 - 화신 주가·기업개요",
+    "url": "https://itooza.com/vscore/010690"
+   },
+   {
+    "title": "기업모니터 - 화신 기업현황",
+    "url": "https://comp.wisereport.co.kr/company/c1010001.aspx?cmp_cd=010690"
+   },
+   {
+    "title": "한경 마켓 - 화신 컨센서스",
+    "url": "https://markets.hankyung.com/stock/010690/consensus"
+   },
+   {
+    "title": "다음 - [특징주]화신정공, 6월 들어 3배 가까이 급등(혼동 주의: 별도 종목)",
+    "url": "https://v.daum.net/v/20260616110311652?f=p",
+    "date": "2026-06-16"
+   }
+  ]
+ },
+ "phase1_2026_09_28": null,
+ "note": "latest_2026_10_02는 10/2 기준 데이터 수집 결과, phase1_2026_09_28은 9/28 식별 에이전트 결과(검색이 이뤄진 종목만).",
+ "p0_confidence": "낮음"
+}

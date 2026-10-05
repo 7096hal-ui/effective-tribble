@@ -1,0 +1,226 @@
+{
+ "latest_trading_day": "2026-10-02",
+ "holiday_note": "9/29(화)~10/2(금) 4일은 모두 정상 개장했다. 10/1 국군의날은 관공서 공휴일이 아니어서 정상 개장했다(국제뉴스·위키트리 보도, 10/1 KOSPI 종가가 산출되는 점으로도 확인). 10/3(토) 개천절이 토요일과 겹쳐 10/5(월)이 대체공휴일로 KRX 휴장했다(토스증권 2026 휴장일 공지, 한국강사신문, 비건뉴스). 따라서 최신 KRX 정규장 종가는 2026-10-02(금)이고, 다음 거래일은 10/6(화)이다. 참고로 10/9(금) 한글날도 휴장이라는 보도가 있다(비건뉴스).",
+ "kospi_close": 7003.74,
+ "kosdaq_close": 893.29,
+ "index_date": "2026-10-02",
+ "ktb1y_pct": 3.734,
+ "ktb3y_pct": 3.937,
+ "ktb5y_pct": 4.129,
+ "ktb10y_pct": 4.365,
+ "ust10y_pct": 5.26,
+ "rates_date": "2026-10-02",
+ "usdkrw": 1350.6,
+ "usdkrw_date": "2026-10-02",
+ "bok_rate_pct": 3,
+ "brent_usd": 101.31,
+ "events_since_0928": [
+  {
+   "variable": "9월 수출입 동향(산업통상부)",
+   "value": "9월 수출 1,209.4억달러(전년 대비 +83.5%)로 월간 역대 최대다. 종전 최고는 6월 1,022.5억달러였고, 16개월 연속 해당 월 기준 최대치를 경신했다. 반도체 수출은 603억달러(+262.8%)로 처음 600억달러를 넘었고, 무역흑자는 498억달러다. 연간 수출 1조달러 달성 시점은 11월 중으로 예상된다(파이낸셜뉴스).",
+   "asof": "사건일 2026-10-01 09:00 발표 / 게시일 2026-10-01",
+   "source": "머니투데이 https://www.mt.co.kr/economy/2026/10/01/2026100109004992929 ; 서울신문 https://www.seoul.co.kr/news/economy/2026/10/01/20261001500024 ; 한국일보 https://www.hankookilbo.com/news/article/A2026100109120004688 ; 파이낸셜뉴스 https://www.fnnews.com/news/202610011807411464"
+  },
+  {
+   "variable": "9월 소비자물가 및 한은 평가",
+   "value": "9월 CPI 상승률은 2.9%로 8월 3.1%보다 낮아졌다. 한은 이지호 부총재보는 지난해 휴대전화료 할인에 따른 일시적 기저효과가 사라진 점을 고려하면 실제 물가 오름세는 오히려 확대됐다고 평가했다. 한은은 10월 CPI도 3% 내외로 예상하고, 근원물가의 높은 오름세가 이어진다고 봤다. 10/22 금통위의 매파적 기조(3.00%에서 추가 인상 가능성)를 뒷받침하는 재료다.",
+   "asof": "사건일 2026-10-02 / 게시일 2026-10-02",
+   "source": "한국경제 https://www.hankyung.com/article/202610020339i ; 서울신문 https://www.seoul.co.kr/news/economy/finance/2026/10/02/20261002500105 ; 뉴스핌 https://www.newspim.com/news/view/20261002000243 ; 서울경제 https://www.sedaily.com/article/20097458"
+  },
+  {
+   "variable": "미국 9월 고용보고서",
+   "value": "실업률 4.2%로 유지, 평균 시간당 임금은 전월 대비 +0.1%·전년 대비 +3.0%였다. 7~8월 비농업 고용은 합계 6만명 하향 수정됐다. 보도는 이를 ‘약한 고용’으로 평가했고, 시장은 10월 FOMC 동결 확률을 약 82%로 반영했다. 9/16 인상(3.75~4.00%) 이후 추가 인상 기대가 후퇴한 것이다. 9월 비농업 고용 증가 폭은 확인 불가.",
+   "asof": "사건일 2026-10-02(통상 첫째 금요일 발표로 추정) / 게시일 2026-10-05",
+   "source": "Kitco AM Report https://www.kitco.com/news/article/2026-10-05/silver-leads-metals-higher-weak-jobs-data-pressures-fed-path-kitco-am"
+  },
+  {
+   "variable": "이란 전쟁·호르무즈·유가",
+   "value": "호르무즈 해협과 미-이란 대치는 아직 해소되지 않았다. 다만 9월 마지막 주 7일 중 4일은 페르시아만 원유 수출이 전쟁 전 수준을 넘었고, 각국의 공조 비축유 방출이 공급 압력을 일부 상쇄했다. 브렌트유는 9/28 $106.89에서 10/5 $101.31(전일 대비 −0.92%)로 약 5% 하락했다. 휴전·재개방 합의 같은 구체적 사건은 확인하지 못했다.",
+   "asof": "2026-09-28 ~ 2026-10-05",
+   "source": "Trading Economics https://tradingeconomics.com/commodity/brent-crude-oil ; Kitco(10/5)"
+  },
+  {
+   "variable": "국내 금리 급락(9/28 고점 대비)",
+   "value": "미 국채금리 하락과 국고채 발행 축소 기대로 10/2 국고채 3년물이 3.937%를 기록했다. 4%를 밑돈 것은 14거래일 만이다. 9/28 4.119% 대비 −18.2bp, 10년물은 4.539% → 4.365%로 −17.4bp다.",
+   "asof": "2026-10-02",
+   "source": "스페셜타임스 https://www.specialtimes.co.kr/news/articleView.html?idxno=469983 ; 세이프머니 https://www.safemoney.co.kr/news/articleView.html?idxno=30921"
+  },
+  {
+   "variable": "KOSPI 주간 흐름",
+   "value": "9/28 6,889.74 → 9/29 약 6,870.81(9/30 하락폭으로 역산) → 9/30 6,838.04(−32.77p, −0.48%) → 10/1 약 6,971.35(10/2 상승폭으로 역산, +133p, 약 +1.95%; 9월 수출 호조 발표일) → 10/2 7,003.74(+32.39p, +0.46%). 10/2에는 기관(금융투자)과 기타법인이 순매수했고, 개인과 외국인은 순매도했다.",
+   "asof": "2026-09-28 ~ 2026-10-02",
+   "source": "아시아경제 https://view.asiae.co.kr/article/2026093015393251143 ; 뉴스1 https://www.news1.kr/finance/market-exr/6309178 ; 아주경제 https://www.ajunews.com/view/20261002153339241"
+  }
+ ],
+ "data_points": [
+  {
+   "variable": "KOSPI 종가",
+   "value": "7,003.74(+32.39p, +0.46%). 기관 매수로 7,000선을 되찾았다. 역산한 전일(10/1) 종가는 6,971.35이다.",
+   "asof": "2026-10-02 KRX 정규장 종가",
+   "source": "뉴스1 https://www.news1.kr/finance/market-exr/6309178 ; 서울경제TV https://www.sentv.co.kr/article/view/sentv202610020150 ; 아주경제 https://www.ajunews.com/view/20261002153339241"
+  },
+  {
+   "variable": "KOSDAQ 종가",
+   "value": "893.29(−1.00p, −0.11%). 역산한 전일(10/1) 종가는 894.29이다. 외국인이 순매도했다. 9/28 846.58 대비 +5.5%로 4거래일 동안 크게 올랐다(중간 일자 종가는 확인하지 못함).",
+   "asof": "2026-10-02 KRX 정규장 종가",
+   "source": "머니투데이 https://www.mt.co.kr/stock/2026/10/02/2026100215273416747 ; 뉴스1 https://www.news1.kr/finance/market-exr/6309178"
+  },
+  {
+   "variable": "KOSPI 9/30 종가",
+   "value": "6,838.04(−32.77p, −0.48%). 머니투데이 제목은 하락폭을 33.77p로 적어 아시아경제와 1p 차이가 난다. 0.48% 하락률과 맞는 쪽은 32.77p(전일 6,870.81)이므로 아시아경제 값을 채택했다.",
+   "asof": "2026-09-30",
+   "source": "아시아경제 https://view.asiae.co.kr/article/2026093015393251143 ; 머니투데이 https://www.mt.co.kr/stock/2026/09/30/2026093015303452707 ; 뉴스핌 https://www.newspim.com/news/view/20260930001088"
+  },
+  {
+   "variable": "국고채 금리(장 마감)",
+   "value": "1년 3.734%(−1.0bp), 2년 3.905%(−6.2bp), 3년 3.937%(−7.3bp, 4% 하회는 14거래일 만), 5년 4.129%(−7.1bp), 10년 4.365%(−7.1bp). 9/28 대비 3년 −18.2bp, 5년 −21.6bp, 10년 −17.4bp, 1년 +0.8bp.",
+   "asof": "2026-10-02",
+   "source": "스페셜타임스 https://www.specialtimes.co.kr/news/articleView.html?idxno=469983 ; 세이프머니 https://www.safemoney.co.kr/news/articleView.html?idxno=30921"
+  },
+  {
+   "variable": "원/달러 환율",
+   "value": "1,350.6원(15:30 주간거래 종가, 전일 대비 −7.8원). 역산한 10/1 종가는 1,358.4원이고, 9/28 1,365.1원 대비 −14.5원이다.",
+   "asof": "2026-10-02 15:30",
+   "source": "데일리팝 [매일 금리·환율 브리핑] http://www.dailypop.kr/news/articleView.html?idxno=103097"
+  },
+  {
+   "variable": "한국은행 기준금리",
+   "value": "3.00%. 8/27 인상 이후 변동이 없다. 다음 금통위는 2026-10-22이다.",
+   "asof": "2026-08-27 결정(10/2 현재 유효)",
+   "source": "이전 단계 C2-macro-cycle.json(이투데이·한국금융신문); 이번에 새로 검색하지는 않음"
+  },
+  {
+   "variable": "브렌트유",
+   "value": "$101.31/배럴(전일 대비 −0.92%). 역산한 10/2 종가는 약 $102.25이고, 9/28 $106.89 대비 약 −5%다.",
+   "asof": "2026-10-05(Trading Economics 시세, 장중일 수 있음)",
+   "source": "Trading Economics https://tradingeconomics.com/commodity/brent-crude-oil"
+  },
+  {
+   "variable": "미 국채 10년",
+   "value": "약 5.26%. 정확한 종가가 아니라 ‘5.26% 부근에서 거래’라는 서술이다. 9/25 5.17% 대비 비슷하거나 높은 수준인데, 국내 금리 하락 보도의 ‘미 국채금리 하락’과 방향이 맞지 않는다.",
+   "asof": "2026-10-05 보도 기준(10/2 종가는 확인 불가)",
+   "source": "Kitco https://www.kitco.com/news/article/2026-10-05/silver-leads-metals-higher-weak-jobs-data-pressures-fed-path-kitco-am"
+  },
+  {
+   "variable": "미국 연방기금금리",
+   "value": "3.75~4.00%(9/16 인상 이후 변동 없음). 10월 FOMC 동결 확률은 약 82%다.",
+   "asof": "2026-10-05 시장 반영",
+   "source": "Kitco(10/5); 이전 단계 C2(연준 보도자료)"
+  }
+ ],
+ "searches_used": 6,
+ "flags": [
+  "미 국채 10년 5.26%는 10/5 기사의 ‘부근 거래’ 서술이고 10/2 종가가 아니다. 국내 채권 기사의 ‘미 국채금리 하락’ 서술과 방향이 어긋나므로 사용 전 교차확인이 필요하다.",
+  "브렌트유 101.31은 10/5 Trading Economics 시세로 장중값일 수 있다. 10/2 종가(약 102.25)는 등락률로 역산한 값이다.",
+  "10/1 KOSPI 6,971.35, KOSDAQ 894.29, 원/달러 1,358.4원은 10/2 등락폭으로 역산한 값이다. 9/29 KOSPI 6,870.81도 9/30 하락폭으로 역산했다.",
+  "KOSDAQ이 9/28 846.58에서 10/2 893.29로 +5.5% 올랐으나 9/29~10/1 개별 종가는 확인하지 못했다. 10/2 값은 머니투데이와 뉴스1이 일치한다.",
+  "원/달러 1,350.6원은 데일리팝 한 곳만 확인했다(기사 제목에 10월 2일이 명시돼 있음).",
+  "국고채 1년물 3.734%(−1.0bp)는 스페셜타임스·세이프머니 요약에서 나온 값이고, 다른 만기보다 하락 폭이 작다.",
+  "미국 9월 비농업 고용 증가 폭과 발표일(10/2 추정)은 확인 불가다.",
+  "이란·호르무즈 관련 9/29~10/5 사이의 구체적 외교·군사 사건(휴전·재개방 합의 등)은 확인 불가다.",
+  "한은 기준금리 3.00%는 이전 단계 자료를 그대로 쓴 값이다. 10/22 금통위 전에는 바뀔 수 없으므로 검색하지 않았다."
+ ],
+ "sources": [
+  {
+   "title": "코스피, 0.46% 상승한 7003.74 마감…코스닥 0.11%↓(2보) - 뉴스1",
+   "url": "https://www.news1.kr/finance/market-exr/6309178",
+   "date": "2026-10-02"
+  },
+  {
+   "title": "[스팟]코스닥 1.00포인트(0.11%) 내린 893.29 마감 - 머니투데이",
+   "url": "https://www.mt.co.kr/stock/2026/10/02/2026100215273416747",
+   "date": "2026-10-02"
+  },
+  {
+   "title": "[마감시황]코스피 '7000피' 턱걸이…코스닥은 '하락' - 아주경제",
+   "url": "https://www.ajunews.com/view/20261002153339241",
+   "date": "2026-10-02"
+  },
+  {
+   "title": "코스피, 0.46% 오른 7003선 마감 - 서울경제TV",
+   "url": "https://www.sentv.co.kr/article/view/sentv202610020150",
+   "date": "2026-10-02"
+  },
+  {
+   "title": "국고채 금리 일제히 하락…3년물 3.937% - 스페셜타임스",
+   "url": "https://www.specialtimes.co.kr/news/articleView.html?idxno=469983",
+   "date": "2026-10-02"
+  },
+  {
+   "title": "국고채 금리 일제히 떨어져 '10년물 4.365%' - 세이프머니",
+   "url": "https://www.safemoney.co.kr/news/articleView.html?idxno=30921",
+   "date": "2026-10-02"
+  },
+  {
+   "title": "[매일 금리·환율 브리핑] 10월 2일, 원/달러 환율 7.8원 하락 - 데일리팝",
+   "url": "http://www.dailypop.kr/news/articleView.html?idxno=103097",
+   "date": "2026-10-02"
+  },
+  {
+   "title": "코스피, 32.77P 내린 6838.04 마감 - 아시아경제",
+   "url": "https://view.asiae.co.kr/article/2026093015393251143",
+   "date": "2026-09-30"
+  },
+  {
+   "title": "[스팟] 코스피 33.77포인트(0.48%) 내린 6838.04 마감 - 머니투데이",
+   "url": "https://www.mt.co.kr/stock/2026/09/30/2026093015303452707",
+   "date": "2026-09-30"
+  },
+  {
+   "title": "2026년 국내/해외 주식 및 옵션 휴장일 안내 - 토스증권",
+   "url": "https://corp.tossinvest.com/ko/post?category=52&id=21740&type=notice"
+  },
+  {
+   "title": "2026년 개천절 대체공휴일, 은행·주식시장 운영 여부 - 한국강사신문",
+   "url": "https://www.lecturernews.com/news/articleView.html?idxno=211549"
+  },
+  {
+   "title": "국내 증시 5일 휴장…9일 한글날도 쉰다 - 비건뉴스",
+   "url": "https://www.vegannews.co.kr/news/article.html?no=391349"
+  },
+  {
+   "title": "오늘 국장 열리나?…10월 증시 휴장일 총정리 - 위키트리",
+   "url": "https://www.wikitree.co.kr/articles/1163986"
+  },
+  {
+   "title": "9월 수출 83.5% 늘어난 1209억 달러…반도체 수출 262.8%↑ - 머니투데이",
+   "url": "https://www.mt.co.kr/economy/2026/10/01/2026100109004992929",
+   "date": "2026-10-01"
+  },
+  {
+   "title": "[속보] 9월 수출 1209억弗 ‘역대 최대’…반도체 첫 600억弗 돌파 - 서울신문",
+   "url": "https://www.seoul.co.kr/news/economy/2026/10/01/20261001500024",
+   "date": "2026-10-01"
+  },
+  {
+   "title": "쉼없는 '반도체 질주'… 11월 중 '수출 1조달러' - 파이낸셜뉴스",
+   "url": "https://www.fnnews.com/news/202610011807411464",
+   "date": "2026-10-01"
+  },
+  {
+   "title": "9월 물가 2%대로 낮아졌지만…한은 9월 물가 오름세 오히려 확대 - 한국경제",
+   "url": "https://www.hankyung.com/article/202610020339i",
+   "date": "2026-10-02"
+  },
+  {
+   "title": "한은 “10월 소비자물가 상승률 3% 내외 높은 수준 예상” - 서울신문",
+   "url": "https://www.seoul.co.kr/news/economy/finance/2026/10/02/20261002500105",
+   "date": "2026-10-02"
+  },
+  {
+   "title": "한은 \"10월 물가도 3% 내외…근원물가 높은 오름세 지속\" - 뉴스핌",
+   "url": "https://www.newspim.com/news/view/20261002000243",
+   "date": "2026-10-02"
+  },
+  {
+   "title": "Silver leads metals higher as weak jobs data pressures Fed path - Kitco AM Report",
+   "url": "https://www.kitco.com/news/article/2026-10-05/silver-leads-metals-higher-weak-jobs-data-pressures-fed-path-kitco-am",
+   "date": "2026-10-05"
+  },
+  {
+   "title": "Brent oil - Price - Chart - Historical Data - Trading Economics",
+   "url": "https://tradingeconomics.com/commodity/brent-crude-oil",
+   "date": "2026-10-05"
+  }
+ ]
+}
