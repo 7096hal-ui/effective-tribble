@@ -9,7 +9,7 @@ export const meta = {
 }
 
 const CTX = `[공통 맥락]
-- 한국 상장주식 26개 종목의 1년·3년·5년 총주주수익률(TSR) 전망·순위화 프로젝트. 기준 2026-09-28(월) 장마감 후, 원화, 세전·수수료 차감 전. 전망 종료일 2027-09-28 / 2029-09-28 / 2031-09-28.
+- 한국 상장주식 26개 종목의 1년·3년·5년 총주주수익률(TSR) 전망·순위화 프로젝트. 분석 기준 ${args.baseTime}, 기준 주가는 ${args.baseDate} 전후 최근 정규장 종가, 원화, 세전·수수료 차감 전. 전망 종료일 ${args.endDates}. 펀더멘털 스냅샷은 2026-09-28이며 이후 변동분은 도시에·거시의 delta 항목에 있다.
 - tsr_cum_pct = (기말 주가 + 누적 주당배당)/P0 - 1. 기말 주가는 희석·자사주 소각 반영 현재 1주 기준.
 - 파일(Read): 거시 ${args.macroPath}, 종목 도시에 ${args.dossierDir}/<종목명>.json, 종목 분석(산업전문가 sp·일반분석가 ge·보정 fin) ${args.analysisDir}/<종목명>.json, 잠정 순위표 ${args.tablePath}.
 - 도구: WebSearch만 가능(ToolSearch "select:WebSearch"). 세션 검색 예산이 있으니 권장 횟수 이내로. "web search budget" 메시지가 나오면 검색을 멈춰라.
@@ -92,7 +92,7 @@ const results = await pipeline(targets,
 
 다음을 하나씩 공격하라(보완 검색 3~6회 이내):
 1) 시장이 이미 낙관론을 주가에 반영하지 않았는가? 2) 예상 성장률이 업계 베이스레이트보다 지나치게 높은가? 3) 매출이 늘어도 마진·현금흐름이 악화될 수 있는가? 4) 고객사의 자체개발·이원화·가격인하 요구는? 5) 기술 대체·시장이 예상보다 작을 가능성은? 6) 자금조달·희석을 누락하지 않았는가? 7) 낮은 유동성이 기대수익률을 왜곡하지 않는가? 8) 단일 수주·임상·고객·정책 의존은? 9) 성공 시나리오 확률을 과대평가하지 않았는가? 10) 5년 뒤 적용 멀티플이 성숙기업으로서 너무 높은가?
-무조건 공격하지 말고, 근거가 약한 반론은 severity를 low/none으로 두라. 타당한 반론이 있으면 proposed_revisions에 기간별 수정 시나리오 세트를 제시하라(확률합 1, TSR 공식 준수).`, { label: `I:bear:${s.name}`, phase: 'Bear', schema: BEAR_SCHEMA }),
+무조건 공격하지 말고, 근거가 약한 반론은 severity를 low/none으로 두라. 타당한 반론이 있으면 proposed_revisions에 기간별 수정 시나리오 세트를 제시하라(확률합 1, TSR 공식 준수).`, { label: `I:bear:${s.name}`, phase: 'Bear', schema: BEAR_SCHEMA, effort: args.effort || 'high' }),
   (bear, s) => agent(`${CTX}
 
 역할: J. 최종 심사 에이전트. 대상: ${s.name} (${s.code}), P0 ${s.P0}원(${s.P0_date}).
@@ -102,7 +102,7 @@ const results = await pipeline(targets,
 약세론 에이전트 결과: ${JSON.stringify(bear)}
 
 독립 분석(fin)과 반대심문 결과를 통합해 최종 시나리오 세트를 확정하라. 단순 평균이 아니라 데이터 품질, 산업 전문성, 가정의 타당성에 따라 가중치를 정하라. 반론이 타당하면 수익률 분포를 실제로 수정하고, 타당하지 않으면 기각 이유를 적어라. 분석가 간 중요한 의견 차이를 숨기지 말라.
-발표 전에 각 시나리오의 tsr_cum_pct = (end_price_krw + cum_dividends_krw)/P0 - 1, 확률합 = 1.0, expected = Σ prob×tsr를 검산하고 arithmetic_check에 적어라. 민감도(표준 충격별 기대 누적 TSR 변화 %p)도 수정 후 기준으로 다시 제시하라.`, { label: `J:judge:${s.name}`, phase: 'Judge', schema: JUDGE_SCHEMA })
+발표 전에 각 시나리오의 tsr_cum_pct = (end_price_krw + cum_dividends_krw)/P0 - 1, 확률합 = 1.0, expected = Σ prob×tsr를 검산하고 arithmetic_check에 적어라. 민감도(표준 충격별 기대 누적 TSR 변화 %p)도 수정 후 기준으로 다시 제시하라.`, { label: `J:judge:${s.name}`, phase: 'Judge', schema: JUDGE_SCHEMA, effort: args.effort || 'high' })
     .then(j => ({ stock: s.name, bear, judge: j })),
 )
 

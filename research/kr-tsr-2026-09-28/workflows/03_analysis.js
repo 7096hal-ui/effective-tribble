@@ -2,7 +2,7 @@ export const meta = {
   name: 'kr-equity-analysis',
   description: 'Per-stock independent industry-specialist and generalist valuations, then base-rate calibration and synthesis into 1/3/5-year TSR scenario sets',
   phases: [
-    { title: 'Price', detail: 'B2: re-verify the 2026-09-28 close where the dossier lacks it' },
+    { title: 'Price', detail: 'B2: re-verify the base-date close where the dossier lacks it' },
     { title: 'Specialist', detail: 'D: industry specialist valuation & scenarios' },
     { title: 'Generalist', detail: 'independent non-industry analyst valuation & scenarios' },
     { title: 'Calibrate', detail: 'H: base-rate calibration and weighted synthesis' },
@@ -11,10 +11,11 @@ export const meta = {
 
 const CTX = `[공통 맥락]
 - 프로젝트: 한국 상장주식 26개 종목의 1년·3년·5년 총주주수익률(TSR) 전망·순위화를 위한 기관급 멀티에이전트 리서치. 당신은 그중 한 역할이다.
-- 분석 기준 시각 2026-09-28(월) 19:40 KST(장마감 후). 기준 주가 P0는 아래에 종목별로 주어진 값(대부분 2026-09-28 종가)을 그대로 사용하라.
-- 전망 종료일: 1년 2027-09-28, 3년 2029-09-28, 5년 2031-09-28(직전 거래일). 통화 KRW.
+- 분석 기준 시각 ${args.baseTime}. 기준 주가 P0는 아래에 종목별로 주어진 값(가장 최근 정규장 종가, 대부분 ${args.baseDate})을 그대로 사용하라.
+- 전망 종료일: ${args.endDates}. 통화 KRW.
+- 펀더멘털 자료(도시에·거시)는 2026-09-28 장마감 스냅샷이고, 그 이후 실행 시점까지의 가격·공시·뉴스 변동분은 도시에의 delta 항목과 거시 파일의 delta 항목에 있다. 둘을 함께 반영하라.
 - TSR 정의: 세전·수수료 차감 전. tsr_cum_pct = (기말 주가 + 기간 중 누적 주당배당) / P0 - 1 (%). 기말 주가는 희석(유상증자·CB/BW 전환·스톡옵션)과 자사주 소각을 반영한 '현재 1주' 기준 값이어야 한다.
-- 입력 파일(Read로 읽어라): 거시 공통 시나리오 ${args.macroPath}, 종목 도시에(B 데이터·E 포렌식·G 위험) ${args.dossierDir}/<종목명>.json.
+- 입력 파일(Read로 읽어라): 거시 공통 시나리오 요약 ${args.macroPath}(상세 사이클 근거는 ${args.macroFullPath}의 semi/others 섹션, 필요할 때만), 종목 도시에(B 데이터·E 포렌식·G 위험·delta) ${args.dossierDir}/<종목명>.json.
 - 도구: WebSearch만 사용 가능(ToolSearch로 "select:WebSearch" 로드). WebFetch·Bash 네트워크는 차단. 세션 검색 예산이 있으니 꼭 필요한 보완 검색만 하라(아래 권장 횟수 이내). 검색 결과가 "web search budget" 메시지를 주면 검색을 멈추고 확보한 정보만으로 작성하라.
 - 원칙: 수치·출처 날조 금지. 확인된 사실/추정/가정/의견을 구분. 확률을 확정적 사실처럼 쓰지 말 것. 거시 공통 가정(금리·환율·AI 설비투자·메모리 사이클·관세·바이오 자금조달 등)과 모순되는 가정을 쓰지 말고, 다르게 보려면 이유를 명시.
 - 가치평가 원칙: 최소 2개 방법. 경기순환주는 고점 이익에 낮은 PER을 적용하는 오류를 피하고 정상화(중간사이클) 이익을 함께 계산. 바이오·진단은 임상·허가·급여·상업화 성공확률과 현금소진·증자 가능성 반영(성공확률에 반영한 위험을 할인율에 중복 반영 금지). 신규상장·실적 이력이 짧으면 비교기업·산업 베이스레이트를 쓰고 신뢰도를 낮춰라. 5년 전망에서 영구 고성장·최고 마진 지속을 가정하지 말고 경쟁 심화와 멀티플 정상화를 반영. 주당가치에 집중. 증권사 목표주가는 참고일 뿐. 현재 주가가 암시하는 성장률·마진·점유율을 역산하라.
@@ -150,12 +151,12 @@ const PRICE_SCHEMA = {
 }
 
 const priceStage = s => {
-  if (s.P0_date === '2026-09-28' && !s.recheck) return Promise.resolve({ ...s, price_check: 'dossier already has cross-checked 2026-09-28 close' })
+  if (s.P0_date === args.baseDate && !s.recheck) return Promise.resolve({ ...s, price_check: `dossier already has cross-checked ${args.baseDate} close` })
   return agent(`${CTX}
 
 역할: B2. 가격 재확인 에이전트. 대상: ${s.name} (${s.code}, ${s.market}). 도시에에 있는 최근 확인 종가는 ${s.P0}원(${s.P0_date})이다${s.recheck ? ' — 단일 출처라 교차확인이 필요하다' : ''}.
-2026-09-28(월) 정규장 종가를 찾아라(추석 연휴 뒤 첫 거래일, 직전 거래일은 9/23로 추정). 검색은 최대 4회. '특징주', '마감', '종가', 날짜를 조합해 검색하고, 기사 게시일과 가격 기준일을 구분하라.
-9/28 종가를 찾지 못하면 9/23 등 ${s.P0_date}보다 더 최근의 종가라도 찾아라. 더 최근 값이 없으면 close_krw=null로 두라. 추측 금지.`, { label: `B2:price:${s.name}`, phase: 'Price', schema: PRICE_SCHEMA })
+${args.baseDate} 정규장 종가를 찾아라. 검색은 최대 4회. '특징주', '마감', '종가', 날짜를 조합해 검색하고, 기사 게시일과 가격 기준일을 구분하라.
+${args.baseDate} 종가를 찾지 못하면 ${s.P0_date}보다 더 최근의 종가라도 찾아라. 더 최근 값이 없으면 close_krw=null로 두라. 추측 금지.`, { label: `B2:price:${s.name}`, phase: 'Price', schema: PRICE_SCHEMA, effort: 'medium' })
     .then(pc => {
       const newer = pc && pc.close_krw && pc.close_date && pc.close_date.slice(0, 10) > s.P0_date
       const confirmed = pc && pc.close_krw && s.recheck && pc.cross_checked && pc.close_date && pc.close_date.slice(0, 10) === s.P0_date
@@ -167,13 +168,13 @@ const priceStage = s => {
 const results = await pipeline(args.stocks,
   priceStage,
   s => parallel([
-    () => agent(specialistPrompt(s), { label: `D:spec:${s.name}`, phase: 'Specialist', schema: ANALYST_SCHEMA }),
-    () => agent(generalistPrompt(s), { label: `GEN:${s.name}`, phase: 'Generalist', schema: ANALYST_SCHEMA }),
+    () => agent(specialistPrompt(s), { label: `D:spec:${s.name}`, phase: 'Specialist', schema: ANALYST_SCHEMA, effort: args.effort || 'high' }),
+    () => agent(generalistPrompt(s), { label: `GEN:${s.name}`, phase: 'Generalist', schema: ANALYST_SCHEMA, effort: args.effort || 'high' }),
   ]).then(pair => ({ s, pair })),
   ({ s, pair }) => {
     const [sp, ge] = pair
     if (!sp || !ge) return { stock: s.name, error: `analyst missing: spec=${!!sp} gen=${!!ge}`, sp, ge, s }
-    return agent(synthPrompt(s, sp, ge), { label: `H:calib:${s.name}`, phase: 'Calibrate', schema: SYNTH_SCHEMA })
+    return agent(synthPrompt(s, sp, ge), { label: `H:calib:${s.name}`, phase: 'Calibrate', schema: SYNTH_SCHEMA, effort: args.effort || 'high' })
       .then(fin => ({ stock: s.name, s, sp, ge, fin }))
   },
 )
